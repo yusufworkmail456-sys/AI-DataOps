@@ -33,9 +33,20 @@ tailwind.config = {
   .pillf { font-size: 12px; padding: 4px 12px; border-radius: 999px; border: 1px solid #1e293b; color: #94a3b8; background: rgba(2,6,23,.6); cursor: pointer; }
   .pillf:hover { color: #e2e8f0; }
   .pillf.on { background: #2563eb; border-color: #2563eb; color: #fff; }
-  .tabbtn { display: flex; align-items: center; gap: 8px; padding: 12px 14px; font-size: 12px; color: #94a3b8; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
-  .tabbtn:hover { color: #e2e8f0; }
-  .tabbtn.on { color: #60a5fa; border-bottom-color: #3b82f6; }
+  .tabbtn { display: flex; align-items: center; gap: 10px; margin: 2px 8px 2px 0; padding: 10px 12px; font-size: 12px; color: #94a3b8; border-left: 2px solid transparent; border-radius: 0 8px 8px 0; cursor: pointer; white-space: nowrap; }
+  .tabbtn:hover { color: #e2e8f0; background: rgba(30,41,59,.35); }
+  .tabbtn.on { color: #60a5fa; border-left-color: #3b82f6; background: rgba(59,130,246,.08); }
+  /* Sidebar collapsible */
+  #sidebar { width: 240px; transition: width .18s ease; }
+  body.sb-min #sidebar { width: 56px; }
+  body.sb-min #sidebar .slabel { display: none; }
+  body.sb-min #sidebar .tabbtn { justify-content: center; padding: 10px 0; margin: 2px 0; }
+  body.sb-min #sidebar .tabbtn .chip, body.sb-min #sidebar .tabbtn .badge { display: none; }
+  @media (max-width: 1023px) {
+    #sidebar { position: fixed; left: 0; top: 4rem; bottom: 0; width: 240px; transform: translateX(-100%); transition: transform .18s ease; z-index: 40; }
+    body.sb-open #sidebar { transform: none; }
+    #sb-backdrop { position: fixed; left: 0; right: 0; top: 4rem; bottom: 0; background: rgba(2,6,23,.6); z-index: 39; }
+  }
   .pbtn { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid #1e293b; color: #94a3b8; background: rgba(2,6,23,.6); cursor: pointer; }
   .pbtn.on { background: #2563eb; border-color: #2563eb; color: #fff; }
   .panel { display: none; }
@@ -64,9 +75,9 @@ tailwind.config = {
 </div>
 
 <!-- ===== APP ===== -->
-<div id="app" hidden>
+<div id="app" hidden class="flex flex-col min-h-screen">
   <!-- Header -->
-  <header class="h-16 sticky top-0 z-30 bg-slate-900/90 backdrop-blur border-b border-slate-800 px-5 flex items-center gap-4">
+  <header class="h-16 sticky top-0 z-30 bg-slate-900/90 backdrop-blur border-b border-slate-800 px-5 flex items-center gap-4 w-full">
     <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 grid place-items-center shrink-0"><i class="fa-solid fa-microchip text-white"></i></div>
     <div class="min-w-0">
       <div class="flex items-center gap-2">
@@ -80,6 +91,7 @@ tailwind.config = {
       <span class="text-[11px] text-slate-400">Target Pilot: <span class="text-slate-200">PostgreSQL (Production) + Apache Airflow</span></span>
     </div>
     <div class="flex-1"></div>
+    <button id="sb-toggle" class="w-9 h-9 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-slate-200 lg:ml-auto" title="Sidebar expand/minimize"><i class="fa-solid fa-bars"></i></button>
     <div class="hidden lg:flex items-center gap-1 p-1 rounded-full bg-slate-950/70 border border-slate-800" id="persona-switch"></div>
     <span class="badge b-emerald hidden md:inline-flex items-center gap-1"><i class="fa-solid fa-shield-halved"></i> Read-Only Default</span>
     <button class="relative w-9 h-9 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-slate-200" title="Notifikasi">
@@ -91,19 +103,23 @@ tailwind.config = {
     </div>
   </header>
 
-  <!-- Sub-header nav -->
-  <div class="bg-slate-900 border-b border-slate-800 px-5 flex items-center gap-1 overflow-x-auto">
-    <div class="tabbtn on" data-tab="topology"><i class="fa-solid fa-diagram-project"></i> Pipeline Observability &amp; Lineage</div>
-    <div class="tabbtn" data-tab="engine"><i class="fa-solid fa-square-check"></i> Rule Engine Deterministik <span class="chip" id="nav-cnt-engine">0</span></div>
-    <div class="tabbtn" data-tab="agents"><i class="fa-solid fa-robot"></i> Orkestrasi AI &amp; Supervisor <span class="badge b-blue">P0</span></div>
-    <div class="tabbtn" data-tab="incidents"><i class="fa-solid fa-triangle-exclamation text-rose-400"></i> Insiden &amp; Human-in-the-Loop <span class="chip" id="nav-cnt-incidents">0</span></div>
-    <div class="tabbtn" data-tab="governance"><i class="fa-solid fa-book-bookmark"></i> Knowledge &amp; Standar Otoritatif</div>
-    <div class="tabbtn" data-tab="maturity"><i class="fa-solid fa-layer-group"></i> Maturitas L1–L5 &amp; Roadmap</div>
-    <div class="flex-1"></div>
-    <span class="badge b-blue hidden xl:inline-flex whitespace-nowrap"><i class="fa-solid fa-circle-check mr-1"></i> 100% Verifikasi Bukti: Ketiadaan bukti telemetri ≠ kepatuhan</span>
-  </div>
+  <div id="sb-backdrop" hidden></div>
 
-  <main class="max-w-[1400px] mx-auto p-5">
+  <!-- Sidebar nav -->
+  <div class="flex flex-1 items-stretch">
+    <aside id="sidebar" class="shrink-0 bg-slate-900 border-r border-slate-800 py-3 flex flex-col gap-1 overflow-y-auto">
+      <div class="lbl px-4 pb-1 whitespace-nowrap slabel">Navigasi</div>
+      <div class="tabbtn on" data-tab="topology"><i class="fa-solid fa-diagram-project w-4 text-center"></i> <span class="slabel">Pipeline Observability &amp; Lineage</span></div>
+      <div class="tabbtn" data-tab="engine"><i class="fa-solid fa-square-check w-4 text-center"></i> <span class="slabel">Rule Engine Deterministik</span> <span class="chip" id="nav-cnt-engine">0</span></div>
+      <div class="tabbtn" data-tab="agents"><i class="fa-solid fa-robot w-4 text-center"></i> <span class="slabel">Orkestrasi AI &amp; Supervisor</span> <span class="badge b-blue">P0</span></div>
+      <div class="tabbtn" data-tab="incidents"><i class="fa-solid fa-triangle-exclamation w-4 text-center text-rose-400"></i> <span class="slabel">Insiden &amp; Human-in-the-Loop</span> <span class="chip" id="nav-cnt-incidents">0</span></div>
+      <div class="tabbtn" data-tab="governance"><i class="fa-solid fa-book-bookmark w-4 text-center"></i> <span class="slabel">Knowledge &amp; Standar Otoritatif</span></div>
+      <div class="tabbtn" data-tab="maturity"><i class="fa-solid fa-layer-group w-4 text-center"></i> <span class="slabel">Maturitas L1–L5 &amp; Roadmap</span></div>
+      <div class="flex-1"></div>
+      <div class="px-3 hidden lg:block"><span class="badge b-blue whitespace-normal"><i class="fa-solid fa-circle-check mr-1"></i> <span class="slabel">100% Verifikasi Bukti: Ketiadaan bukti telemetri ≠ kepatuhan</span></span></div>
+    </aside>
+
+    <main class="flex-1 min-w-0 max-w-[1400px] p-5">
     <div id="global-note" class="mb-4"></div>
 
     <!-- KPI bar -->
@@ -284,6 +300,7 @@ tailwind.config = {
       </div>
     </section>
   </main>
+  </div>
 </div>
 
 <!-- ===== TOAST ===== -->
@@ -448,6 +465,7 @@ function buildNodes() {
     id: a.native_id, asset_id: a.asset_id, demo: false,
     meta: NODE_META[a.provider] || {icon: 'fa-cube', color: 'slate', kind: a.provider},
     name: a.native_id, sub: `${a.provider}/${a.service}`, env: a.environment,
+    platform: a.classification === 'platform',
     ev: S.evidence.filter(e => e.asset_id === a.asset_id).length,
     findings: S.findings.filter(f => f.asset_id === a.asset_id && ['open', 'acknowledged', 'remediating'].includes(f.status)).length,
   }));
@@ -485,8 +503,8 @@ function renderTopology() {
           <div class="chip truncate">${esc(n.id)}</div>
         </div>
       </div>
-      <div class="flex items-center gap-2 mt-3 flex-wrap">
-        ${badge(st.cls, st.label)}${n.demo ? DEMO : ''}
+      <div class="flex items-center gap-2 flex-wrap">
+        ${badge(st.cls, st.label)}${n.demo ? DEMO : ''}${n.platform ? badge('b-slate', 'PLATFORM') : ''}
       </div>
       <div class="grid grid-cols-2 gap-2 mt-3 text-[11px]">
         <div class="inner px-2 py-1"><span class="text-slate-500">Evidence</span> <span class="text-slate-200 font-semibold">${n.ev}</span></div>
@@ -551,7 +569,7 @@ function openNodeDrawer(nodeId) {
     <div class="flex items-center gap-2 flex-wrap">
       <i class="fa-solid ${n.meta.icon} text-blue-400"></i>
       <span class="font-semibold text-slate-100 text-[13px]">${esc(n.name)}</span>
-      ${badge(st.cls, st.label)}${n.demo ? DEMO : ''}
+      ${badge(st.cls, st.label)}${n.demo ? DEMO : ''}${n.platform ? badge('b-slate', 'PLATFORM') : ''}
       <div class="flex-1"></div>
       <button id="drawer-close" class="text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
     </div>
@@ -998,6 +1016,23 @@ $('#btn-sim-anomali').onclick = () => {
   if (n && !n.demo) { toast('warning', `Simulasi anomali pada ${n.name} — dashboard hanya menampilkan data nyata; anomali uji dibuat di sisi agent.`); }
   else toast('warning', 'Simulasi anomali dilewati: belum ada node nyata (agent belum push discovery).');
 };
+
+/* ---------- sidebar toggle ---------- */
+const sb = document.body;
+function setSidebar(min) {
+  sb.classList.toggle('sb-min', min);
+  try { localStorage.setItem('dataops-sb-min', min ? '1' : '0'); } catch (e) {}
+}
+setSidebar((() => { try { return localStorage.getItem('dataops-sb-min') === '1'; } catch (e) { return false; } })());
+$('#sb-toggle').onclick = () => {
+  if (window.innerWidth < 1024) {
+    const open = sb.classList.toggle('sb-open');
+    $('#sb-backdrop').hidden = !open;
+  } else {
+    setSidebar(!sb.classList.contains('sb-min'));
+  }
+};
+$('#sb-backdrop').onclick = () => { sb.classList.remove('sb-open'); $('#sb-backdrop').hidden = true; };
 
 /* ---------- login/logout/boot ---------- */
 function showLogin() { $('#login-box').hidden = false; $('#app').hidden = true; }

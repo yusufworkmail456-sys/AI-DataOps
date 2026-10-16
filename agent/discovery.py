@@ -77,6 +77,8 @@ def discover_systemd() -> list[dict]:
             out.append({
                 "provider": "linux", "service": "systemd", "asset_type": "service",
                 "native_id": unit, "environment": "prod",
+                # unit platform (agent sendiri) → classification 'platform', bukan data infra tenant
+                "classification": "platform" if "dataops" in unit.lower() else "internal",
                 "meta": {"load": parts[1] if len(parts) > 1 else "",
                          "active": parts[2] if len(parts) > 2 else "",
                          "level": "L1"},

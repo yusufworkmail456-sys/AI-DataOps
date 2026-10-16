@@ -40,13 +40,19 @@ LISTEN 0      511        127.0.0.1:6379      0.0.0.0:*  users:(("redis-server",p
                             lambda cmd, timeout=10: "nginx.service loaded active running nginx\n"
                                                     "cron.service loaded active running cron\n"
                                                     "postgresql.service loaded active running postgres\n"
-                                                    "ModemManager.service loaded active running modem\n")
+                                                    "ModemManager.service loaded active running modem\n"
+                                                    "dataops-agent.service loaded active running agent\n")
         units = discovery.discover_systemd()
         names = [u["native_id"] for u in units]
         # hanya unit data-stack; unit OS plumbing (ModemManager) difilter
         assert "postgresql.service" in names
         assert "ModemManager.service" not in names
         assert "cron.service" not in names
+        # unit platform (agent sendiri) ditandai classification='platform'
+        agent_unit = next(u for u in units if u["native_id"] == "dataops-agent.service")
+        assert agent_unit["classification"] == "platform"
+        pg_unit = next(u for u in units if u["native_id"] == "postgresql.service")
+        assert pg_unit["classification"] == "internal"
 
     def test_docker_graceful_no_socket(self, tmp_path):
         # socket tidak ada → kosong, bukan crash

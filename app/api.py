@@ -214,6 +214,8 @@ def ingest_discovery(body: DiscoveryBody, request: Request, s=Depends(get_db)):
             s.flush()
         else:
             asset.observed_at = _parse_dt(item.observed_at) or asset.observed_at
+            if item.classification and item.classification != "internal":
+                asset.classification = item.classification  # platform tag dari agent
             asset.meta = {**asset.meta, "discovered_by": agent.name}
         upserted.append({"asset_id": asset.asset_id, "native_id": asset.native_id,
                          "provider": asset.provider, "service": asset.service})
