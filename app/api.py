@@ -411,9 +411,9 @@ _AGENT_BY_DOMAIN = {
 # routing kata-kunci deterministik → domain kontrol (tanpa LLM)
 _KEYWORD_DOMAINS = {
     "lock": "engineering", "xact": "engineering",
-    "dead tuple": "dba", "vacuum": "dba", "bloat": "dba",
-    "ssl": "security", "tls": "security",
-    "dag": "ops", "airflow": "ops", "task": "ops", "sla": "ops",
+    "dead tuple": "dba", "vacuum": "dba", "bloat": "dba", "postgres": "dba",
+    "keamanan": "security", "aman": "security", "ssl": "security", "tls": "security",
+    "dag": "ops", "airflow": "ops", "task": "ops", "sla": "ops", "pipeline": "ops",
     "lineage": "lineage", "facet": "lineage",
     "audit": "governance", "purge": "governance", "retention": "governance",
 }
@@ -429,6 +429,7 @@ def _chat_answer(s, tenant_id: str, message: str, persona: str) -> dict:
     findings = s.execute(select(Finding).where(Finding.tenant_id == tenant_id)
                          .order_by(Finding.last_seen_at.desc())).scalars().all()
     live = [f for f in findings if f.status in ("open", "acknowledged", "remediating")]
+    accepted = [f for f in findings if f.status == "accepted_risk"]
     run = s.execute(select(AssessmentRun).where(AssessmentRun.tenant_id == tenant_id)
                     .order_by(AssessmentRun.started_at.desc())).scalars().first()
     unknown_n = 0
@@ -447,6 +448,14 @@ def _chat_answer(s, tenant_id: str, message: str, persona: str) -> dict:
         picked, fallback_all = live, True
 
     claims, agents, ev_refs, kn_refs, risks = [], [], [], [], []
+    if accepted and domains:
+        hit = [f for f in accepted if controls.get(f.control_id)
+               and controls[f.control_id].domain in domains]
+        for f in hit[:3]:
+            c = controls.get(f.control_id)
+            claims.append(f"{f.control_id} (severity {f.severity}) pernah terdeteksi "
+                          f"({f.reason}) — status: ACCEPTED RISK dengan rationale tercatat.")
+            ev_refs.extend(f.evidence_refs or [])
     if picked:
         claims.append(f"Terdapat {len(picked)} temuan aktif yang relevan"
                       + (f" dengan topik '{message.strip()}'" if domains and not fallback_all else "")
