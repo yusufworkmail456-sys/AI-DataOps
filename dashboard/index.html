@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI DataOps Intelligence</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: #020617; /* slate-950 */
+    color: #e2e8f0;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 24px; border-bottom: 1px solid #1e293b;
+  }
+  header h1 { font-size: 16px; font-weight: 600; color: #f8fafc; }
+  header .brand { color: #3b82f6; font-weight: 700; }
+  header .spacer { flex: 1; }
+  header .who { font-size: 12px; color: #94a3b8; }
+  nav {
+    display: flex; gap: 4px; padding: 0 24px;
+    border-bottom: 1px solid #1e293b; background: #0f172a;
+  }
+  nav button {
+    appearance: none; border: 0; background: transparent; color: #94a3b8;
+    padding: 10px 16px; font-size: 13px; cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+  nav button:hover { color: #e2e8f0; }
+  nav button.active { color: #60a5fa; border-bottom-color: #3b82f6; }
+  main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .tab-panel h2 { font-size: 15px; font-weight: 600; color: #f1f5f9; margin-bottom: 4px; }
+  .tab-panel .sub { font-size: 12px; color: #64748b; margin-bottom: 16px; }
+  .placeholder {
+    border: 1px dashed #1e40af; border-radius: 8px;
+    background: rgba(59,130,246,.06);
+    padding: 24px; font-size: 13px; color: #93c5fd;
+  }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .card {
+    background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 14px;
+  }
+  .card .label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #64748b; }
+  .card .value { font-size: 24px; font-weight: 700; color: #60a5fa; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: #64748b; font-weight: 500; font-size: 11px; text-transform: uppercase; padding: 8px; border-bottom: 1px solid #1e293b; }
+  td { padding: 8px; border-bottom: 1px solid #172033; color: #cbd5e1; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .pill.pass { background: rgba(34,197,94,.15); color: #4ade80; }
+  .pill.fail { background: rgba(239,68,68,.15); color: #f87171; }
+  .pill.unknown { background: rgba(234,179,8,.15); color: #facc15; }
+  .pill.not_applicable { background: rgba(100,116,139,.2); color: #94a3b8; }
+  .pill.open, .pill.fresh { background: rgba(239,68,68,.15); color: #f87171; }
+  .pill.acknowledged { background: rgba(234,179,8,.15); color: #facc15; }
+  .pill.resolved, .pill.accepted_risk, .pill.remediating { background: rgba(34,197,94,.15); color: #4ade80; }
+  .empty { color: #475569; font-size: 13px; padding: 16px 0; }
+  #login-box { max-width: 340px; margin: 15vh auto; background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 28px; }
+  #login-box h2 { color: #60a5fa; margin-bottom: 16px; font-size: 16px; }
+  #login-box input { width: 100%; padding: 9px 12px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #334155; background: #020617; color: #e2e8f0; font-size: 13px; }
+  #login-box button { width: 100%; padding: 9px; border: 0; border-radius: 6px; background: #2563eb; color: #fff; font-weight: 600; cursor: pointer; }
+  #login-box .err { color: #f87171; font-size: 12px; margin-bottom: 8px; min-height: 16px; }
+</style>
+</head>
+<body>
+
+<div id="login-box" hidden>
+  <h2><span class="brand">DataOps</span> Login</h2>
+  <div class="err" id="login-err"></div>
+  <input id="login-user" placeholder="username" autocomplete="username">
+  <input id="login-pass" type="password" placeholder="password" autocomplete="current-password">
+  <button id="login-btn">Masuk</button>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <h1><span class="brand">AI DataOps</span> Intelligence</h1>
+    <div class="spacer"></div>
+    <span class="who" id="whoami"></span>
+    <button class="pill" style="border:0;cursor:pointer;background:#1e293b;color:#94a3b8;padding:4px 10px;border-radius:6px" id="logout-btn">Keluar</button>
+  </header>
+  <nav>
+    <button data-tab="topology" class="active">Topology</button>
+    <button data-tab="engine">Engine</button>
+    <button data-tab="agents">Agents</button>
+    <button data-tab="incidents">Incidents</button>
+    <button data-tab="governance">Governance</button>
+    <button data-tab="maturity">Maturity</button>
+  </nav>
+  <main>
+    <section class="tab-panel active" id="tab-topology">
+      <h2>Topology</h2>
+      <div class="sub">Asset discovery &amp; source-to-sink (sejauh evidence tersedia)</div>
+      <div class="cards" id="topo-cards"></div>
+      <table><thead><tr><th>Asset</th><th>Provider</th><th>Service</th><th>Type</th><th>Env</th><th>Observed</th></tr></thead>
+      <tbody id="topo-assets"></tbody></table>
+    </section>
+    <section class="tab-panel" id="tab-engine">
+      <h2>Rule Engine</h2>
+      <div class="sub">Control results dari assessment terakhir — unknown ≠ compliant</div>
+      <div class="cards" id="engine-cards"></div>
+      <table><thead><tr><th>Control</th><th>v</th><th>Status</th><th>Reason</th><th>Evaluated</th></tr></thead>
+      <tbody id="engine-results"></tbody></table>
+    </section>
+    <section class="tab-panel" id="tab-agents">
+      <h2>Agents</h2>
+      <div class="sub">Integrasi agent-based (PG + Airflow) &amp; capability matrix</div>
+      <div class="placeholder">Stub: daftar agent + capability (discover/observe/evaluate) — konten visual menyusul.</div>
+    </section>
+    <section class="tab-panel" id="tab-incidents">
+      <h2>Incidents / Findings</h2>
+      <div class="sub">Finding lifecycle: open → acknowledged → remediating → resolved / accepted_risk</div>
+      <table><thead><tr><th>Finding</th><th>Control</th><th>Severity</th><th>Status</th><th>Reason</th><th>First seen</th></tr></thead>
+      <tbody id="incident-findings"></tbody></table>
+      <div class="empty" id="incident-empty" hidden>Tidak ada findings.</div>
+    </section>
+    <section class="tab-panel" id="tab-governance">
+      <h2>Governance</h2>
+      <div class="sub">Audit events (append-only) &amp; exceptions</div>
+      <table><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Outcome</th></tr></thead>
+      <tbody id="gov-audit"></tbody></table>
+      <div class="placeholder" style="margin-top:12px">Stub: exceptions &amp; approval flow — menyusul.</div>
+    </section>
+    <section class="tab-panel" id="tab-maturity">
+      <h2>Maturity</h2>
+      <div class="sub">Coverage &amp; tingkat integrasi (L1 Discover … L5 Act)</div>
+      <div class="placeholder">Stub: maturity per integration — menyusul.</div>
+    </section>
+  </main>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const api = (path, opts = {}) => fetch(path, {credentials: 'same-origin', ...opts})
+  .then(async r => { if (r.status === 401) { showLogin(); throw new Error('unauthenticated'); } return r.json(); });
+
+let TAB_LOADERS = {};
+
+function showLogin() { $('#login-box').hidden = false; $('#app').hidden = true; }
+function showApp() { $('#login-box').hidden = true; $('#app').hidden = false; }
+
+function pill(status) { return `<span class="pill ${status}">${status}</span>`; }
+
+function cards(el, items) {
+  el.innerHTML = items.map(i => `<div class="card"><div class="label">${i.label}</div><div class="value">${i.value}</div></div>`).join('');
+}
+
+TAB_LOADERS = {
+  topology: async () => {
+    const d = await api('/api/assets');
+    const a = d.assets || [];
+    const provs = [...new Set(a.map(x => x.provider))];
+    cards($('#topo-cards'), [
+      {label: 'Assets', value: a.length},
+      {label: 'Providers', value: provs.length},
+      {label: 'Tenants', value: a[0] ? 1 : 0},
+    ]);
+    $('#topo-assets').innerHTML = a.map(x =>
+      `<tr><td>${x.native_id}</td><td>${x.provider}</td><td>${x.service}</td><td>${x.asset_type}</td><td>${x.environment}</td><td>${(x.observed_at||'').slice(0,19)}</td></tr>`
+    ).join('') || '<tr><td colspan="6" class="empty">Belum ada asset (agent belum push discovery).</td></tr>';
+  },
+  engine: async () => {
+    const [res, runs] = await Promise.all([api('/api/control-results'), api('/api/assessments')]);
+    const r = res.control_results || [];
+    const count = s => r.filter(x => x.status === s).length;
+    cards($('#engine-cards'), [
+      {label: 'Pass', value: count('pass')},
+      {label: 'Fail', value: count('fail')},
+      {label: 'Unknown', value: count('unknown')},
+      {label: 'N/A', value: count('not_applicable')},
+    ]);
+    $('#engine-results').innerHTML = r.slice(0, 50).map(x =>
+      `<tr><td>${x.control_id}</td><td>v${x.control_version}</td><td>${pill(x.status)}</td><td>${x.reason||''}</td><td>${(x.evaluated_at||'').slice(0,19)}</td></tr>`
+    ).join('') || '<tr><td colspan="5" class="empty">Belum ada assessment — trigger dari sisi admin (API).</td></tr>';
+  },
+  agents: async () => {
+    const d = await api('/api/integrations');
+    const rows = (d.integrations || []).map(i =>
+      `<tr><td>${i.provider}/${i.service}</td><td>v${i.adapter_version}</td><td>${i.support_status}</td><td>${(i.capabilities&&Object.keys(i.capabilities).filter(k=>i.capabilities[k]).join(', '))||''}</td><td>${i.limitations||''}</td></tr>`).join('');
+    document.querySelector('#tab-agents .placeholder').outerHTML =
+      `<table><thead><tr><th>Integration</th><th>Adapter</th><th>Status</th><th>Capabilities</th><th>Limitations</th></tr></thead><tbody>${rows||'<tr><td colspan="5" class="empty">Registry kosong.</td></tr>'}</tbody></table>`;
+  },
+  incidents: async () => {
+    const d = await api('/api/findings');
+    const f = d.findings || [];
+    $('#incident-findings').innerHTML = f.map(x =>
+      `<tr><td style="font-family:monospace;font-size:11px">${x.finding_id.slice(0,8)}</td><td>${x.control_id} v${x.control_version}</td><td>${pill(x.severity)}</td><td>${pill(x.status)}</td><td>${x.reason||''}</td><td>${(x.first_seen_at||'').slice(0,19)}</td></tr>`
+    ).join('');
+    $('#incident-empty').hidden = f.length > 0;
+  },
+  governance: async () => {
+    const d = await api('/api/audit-events');
+    const e = d.audit_events || [];
+    $('#gov-audit').innerHTML = e.map(x =>
+      `<tr><td>${(x.timestamp||'').slice(0,19)}</td><td>${x.actor}</td><td>${x.action}</td><td>${x.target||''}</td><td>${pill(x.outcome==='allow'?'resolved':x.outcome)}</td></tr>`
+    ).join('') || '<tr><td colspan="5" class="empty">Belum ada audit event.</td></tr>';
+  },
+  maturity: async () => {
+    // stub — konten visual diperkaya belakangan
+  },
+};
+
+async function loadTab(tab) {
+  try { await TAB_LOADERS[tab](); } catch (e) { /* unauth ditangani api() */ }
+}
+
+document.querySelectorAll('nav button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    $('#tab-' + btn.dataset.tab).classList.add('active');
+    loadTab(btn.dataset.tab);
+  });
+});
+
+$('#login-btn').addEventListener('click', async () => {
+  const r = await fetch('/auth/login', {
+    method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username: $('#login-user').value, password: $('#login-pass').value}),
+  });
+  if (r.ok) { $('#login-err').textContent = ''; boot(); }
+  else { $('#login-err').textContent = 'Login gagal — cek username/password.'; }
+});
+
+$('#logout-btn').addEventListener('click', async () => {
+  await fetch('/auth/logout', {method: 'POST', credentials: 'same-origin'});
+  showLogin();
+});
+
+async function boot() {
+  try {
+    // probe: endpoint apa pun yang butuh session
+    const r = await fetch('/api/assets', {credentials: 'same-origin'});
+    if (r.status === 401) return showLogin();
+    const me = await r.json();
+    showApp();
+    $('#whoami').textContent = 'tenant ' + (me.assets?.[0]?.tenant_id || '—');
+    loadTab('topology');
+  } catch (e) { showLogin(); }
+}
+
+boot();
+</script>
+</body>
+</html>
