@@ -5,8 +5,14 @@ import re
 import shutil
 import subprocess
 
+# Unit systemd yang relevan utk DataOps: data infra (db, broker, orchestrator, dsb).
+# ponytail: substring match sederhana; upgrade path = config pattern per tenant di agent.yaml.
+DATA_UNIT_RE = re.compile(
+    r"(postgres|mysql|mariadb|mongo|redis|kafka|zookeeper|clickhouse|airflow|airbyte|"
+    r"superset|spark|elasticsearch|opensearch|minio|rabbitmq|nats|etcd|cassandra|"
+    r"dataops|dbt|dagster|prefect|nifi|flink|solr|neo4j|influx|timescale|pgbouncer)", re.I)
+
 SIGNATURES = [
-    # (provider, service, asset_type, match: process/port/env/path)
     {"provider": "postgresql", "service": "database", "asset_type": "database",
      "processes": ["postgres"], "default_ports": [5432],
      "version_probe": "sql:SELECT version()"},
@@ -59,7 +65,7 @@ def discover_docker(socket_path: str = "/var/run/docker.sock") -> list[dict]:
 
 
 def discover_systemd() -> list[dict]:
-    """systemd list-units --type=service (read-only)."""
+    """systemd list-units --type=service (read-only). Hanya unit data-stack."""
     out: list[dict] = []
     raw = _run(["systemctl", "list-units", "--type=service", "--no-legend", "--no-pager"])
     for line in raw.splitlines():
@@ -67,7 +73,7 @@ def discover_systemd() -> list[dict]:
         if not parts:
             continue
         unit = parts[0]
-        if unit.endswith(".service"):
+        if unit.endswith(".service") and DATA_UNIT_RE.search(unit):
             out.append({
                 "provider": "linux", "service": "systemd", "asset_type": "service",
                 "native_id": unit, "environment": "prod",

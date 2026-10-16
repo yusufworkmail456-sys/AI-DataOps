@@ -196,6 +196,7 @@ def ingest_discovery(body: DiscoveryBody, request: Request, s=Depends(get_db)):
         raise
     agent.last_seen_at = datetime.now(timezone.utc)
     upserted = []
+    seen_keys = {(i.provider, i.service, i.native_id) for i in body.assets}
     for item in body.assets:
         asset = s.execute(
             select(Asset).where(Asset.tenant_id == tenant_id,
@@ -218,8 +219,17 @@ def ingest_discovery(body: DiscoveryBody, request: Request, s=Depends(get_db)):
                          "provider": asset.provider, "service": asset.service})
     service.audit(s, tenant_id, f"agent:{agent.name}", "ingest.discovery",
                   target=f"{len(upserted)} assets")
+    # Asset systemd yang tidak lagi ada di discovery → hapus (unit berhenti/filtered).
+    stale = [a for a in s.execute(select(Asset).where(
+        Asset.tenant_id == tenant_id, Asset.service == "systemd")).scalars().all()
+        if (a.provider, a.service, a.native_id) not in seen_keys]
+    for a in stale:
+        s.delete(a)
+    if stale:
+        service.audit(s, tenant_id, f"agent:{agent.name}", "ingest.discovery.stale_removed",
+                      target=f"{len(stale)} assets")
     s.commit()
-    return {"ok": True, "assets": upserted}
+    return {"ok": True, "assets": upserted, "stale_removed": len(stale)}
 
 
 @app.post("/ingest/evidence")

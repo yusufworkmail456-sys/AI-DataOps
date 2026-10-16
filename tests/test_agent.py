@@ -38,10 +38,15 @@ LISTEN 0      511        127.0.0.1:6379      0.0.0.0:*  users:(("redis-server",p
     def test_systemd_parse(self, monkeypatch):
         monkeypatch.setattr(discovery, "_run",
                             lambda cmd, timeout=10: "nginx.service loaded active running nginx\n"
-                                                    "cron.service loaded active running cron\n")
+                                                    "cron.service loaded active running cron\n"
+                                                    "postgresql.service loaded active running postgres\n"
+                                                    "ModemManager.service loaded active running modem\n")
         units = discovery.discover_systemd()
         names = [u["native_id"] for u in units]
-        assert "nginx.service" in names and "cron.service" in names
+        # hanya unit data-stack; unit OS plumbing (ModemManager) difilter
+        assert "postgresql.service" in names
+        assert "ModemManager.service" not in names
+        assert "cron.service" not in names
 
     def test_docker_graceful_no_socket(self, tmp_path):
         # socket tidak ada → kosong, bukan crash
