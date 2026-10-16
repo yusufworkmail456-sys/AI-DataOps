@@ -592,6 +592,7 @@ const RULE_DOMAIN_HINT = {'RULE-ENG-001': 'engineering', 'RULE-DBA-003': 'dba', 
 
 function renderEngine() {
   const PAGE = 50;
+  let pages = 1;
   const all = visibleResults();
   const counts = {all: all.length, pass: 0, fail: 0, unknown: 0, not_applicable: 0};
   all.forEach(r => counts[r.status] != null && counts[r.status]++);
@@ -608,7 +609,6 @@ function renderEngine() {
   } else if (!rows.length) {
     $('#engine-rows').innerHTML = `<tr><td colspan="6" class="text-[12px] text-slate-500 py-6 text-center">Tidak ada kontrol dengan status ini pada persona terpilih.</td></tr>`;
   } else {
-    const PAGE = 50;
     if (S.filter !== S._lastFilter) { S._lastFilter = S.filter; S.page = 1; }
     const pages = Math.max(1, Math.ceil(rows.length / PAGE));
     if (S.page == null || S.page > pages) S.page = 1;

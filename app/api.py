@@ -28,6 +28,7 @@ DASHBOARD_DIR = Path(__file__).resolve().parent.parent / "dashboard"
 app = FastAPI(title="AI DataOps Intelligence", version="0.1.0")
 
 _engine = None
+_auto_interval = int(os.environ.get("DATAOPS_AUTO_ASSESSMENT_SEC", "0"))
 
 
 def init(db_path: str | None = None):
@@ -559,6 +560,31 @@ def api_assessment_run(body: dict | None = None, auth: AuthContext = Depends(get
     auth.require_write()
     scope = (body or {}).get("scope", {})
     return service.run_assessment(s, auth.tenant_id, scope, actor=auth.actor)
+
+
+def _auto_assessment_loop():
+    """Assessment otomatis tiap interval (default mati; aktif via systemd env)."""
+    import time
+    from .models import make_session_factory
+    log.info("auto-assessment loop aktif tiap %ss", _auto_interval)
+    while True:
+        time.sleep(_auto_interval)
+        try:
+            s = app.state.db_factory()
+            try:
+                r = service.run_assessment(s, DEFAULT_TENANT, {}, actor="auto-scheduler")
+                log.info("auto-assessment %s: %s", r["assessment_id"][:8], r["results"])
+            finally:
+                s.close()
+        except Exception:
+            log.exception("auto-assessment gagal (dilanjutkan)")
+
+
+@app.on_event("startup")
+def _start_auto_assessment():
+    if _auto_interval > 0:
+        import threading
+        threading.Thread(target=_auto_assessment_loop, daemon=True).start()
 
 
 @app.get("/api/integrations")
