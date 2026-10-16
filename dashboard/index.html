@@ -17,6 +17,7 @@ tailwind.config = {
 </script>
 <style>
   :root { color-scheme: dark; }
+  [hidden] { display: none !important; }
   html, body { font-size: 13px; }
   .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #94a3b8; }
   .card { background: #0f172a; border: 1px solid #1e293b; border-radius: 1rem; }
@@ -317,7 +318,8 @@ tailwind.config = {
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const api = (path, opts = {}) => fetch(path, {credentials: 'same-origin', ...opts})
+const API_BASE = '/dataops-api';
+const api = (path, opts = {}) => fetch(API_BASE + path, {credentials: 'same-origin', ...opts})
   .then(async r => { if (r.status === 401) { showLogin(); throw new Error('unauthenticated'); } return r.json(); });
 const post = (p, body) => api(p, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body || {})});
 
@@ -963,7 +965,7 @@ function showLogin() { $('#login-box').hidden = false; $('#app').hidden = true; 
 function showApp() { $('#login-box').hidden = true; $('#app').hidden = false; }
 
 $('#login-btn').addEventListener('click', async () => {
-  const r = await fetch('/auth/login', {method: 'POST', credentials: 'same-origin',
+  const r = await fetch(API_BASE + '/auth/login', {method: 'POST', credentials: 'same-origin',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({username: $('#login-user').value, password: $('#login-pass').value})});
   if (r.ok) { $('#login-err').textContent = ''; boot(); }
@@ -971,13 +973,13 @@ $('#login-btn').addEventListener('click', async () => {
 });
 $('#login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') $('#login-btn').click(); });
 $('#logout-btn').addEventListener('click', async () => {
-  await fetch('/auth/logout', {method: 'POST', credentials: 'same-origin'});
+  await fetch(API_BASE + '/auth/logout', {method: 'POST', credentials: 'same-origin'});
   location.reload();
 });
 
 async function boot() {
   try {
-    const r = await fetch('/api/summary', {credentials: 'same-origin'});
+    const r = await fetch(API_BASE + '/api/summary', {credentials: 'same-origin'});
     if (r.status === 401) return showLogin();
     const d = await r.json();
     S.summary = d;
