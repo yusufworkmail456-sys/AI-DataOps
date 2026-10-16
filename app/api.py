@@ -314,7 +314,215 @@ def api_control_results(auth: AuthContext = Depends(get_auth), s=Depends(get_db)
     rows = s.execute(select(ControlResult).where(
         ControlResult.tenant_id == auth.tenant_id)
         .order_by(ControlResult.evaluated_at.desc()).limit(500)).scalars().all()
-    return {"control_results": [_result_json(r) for r in rows]}
+    controls = {c.control_id: c for c in s.execute(select(Control)).scalars().all()}
+    out = []
+    for r in rows:
+        j = _result_json(r)
+        c = controls.get(r.control_id)
+        if c:
+            j.update({"statement": c.statement, "rule_type": c.rule_type,
+                      "severity": c.severity, "knowledge_ref": c.knowledge_ref})
+        out.append(j)
+    return {"control_results": out}
+
+
+@app.get("/api/evidence")
+def api_evidence(source_ref: str | None = None, auth: AuthContext = Depends(get_auth),
+                 s=Depends(get_db)):
+    """Evidence records tenant-scope (dashboard bukti/modal)."""
+    q = select(EvidenceRecord).where(EvidenceRecord.tenant_id == auth.tenant_id)
+    if source_ref:
+        q = q.where(EvidenceRecord.source_ref == source_ref)
+    rows = s.execute(q.order_by(EvidenceRecord.collected_at.desc())
+                     .limit(100)).scalars().all()
+    return {"evidence": [{
+        "evidence_id": e.evidence_id, "asset_id": e.asset_id,
+        "evidence_type": e.evidence_type, "source_ref": e.source_ref,
+        "payload": e.payload, "collected_at": e.collected_at.isoformat(),
+        "freshness": e.freshness,
+        "access_classification": e.access_classification,
+    } for e in rows]}
+
+
+@app.get("/api/summary")
+def api_summary(auth: AuthContext = Depends(get_auth), s=Depends(get_db)):
+    """KPI agregat dashboard (tenant-scope). Angka hanya dari data nyata; tanpa data → 0/None."""
+    run = s.execute(select(AssessmentRun).where(AssessmentRun.tenant_id == auth.tenant_id)
+                    .order_by(AssessmentRun.started_at.desc())).scalars().first()
+    counts = {"pass": 0, "fail": 0, "unknown": 0, "not_applicable": 0}
+    if run:
+        for r in s.execute(select(ControlResult).where(
+                ControlResult.tenant_id == auth.tenant_id,
+                ControlResult.assessment_id == run.assessment_id)).scalars().all():
+            counts[r.status] = counts.get(r.status, 0) + 1
+    total = sum(counts.values())
+    findings = s.execute(select(Finding).where(Finding.tenant_id == auth.tenant_id)).scalars().all()
+    open_findings = [f for f in findings if f.status in ("open", "acknowledged", "remediating")]
+    assets = s.execute(select(Asset).where(Asset.tenant_id == auth.tenant_id)).scalars().all()
+    controls_active = s.execute(select(Control).where(Control.active == True)).scalars().all()  # noqa: E712
+    pass_rate = round(counts["pass"] / total * 100, 1) if total else None
+    return {
+        "tenant_id": auth.tenant_id,
+        "rule_engine": {**counts, "total": total, "pass_rate": pass_rate,
+                        "has_assessment": run is not None,
+                        "assessment_id": run.assessment_id if run else None,
+                        "evaluated_at": (run.completed_at or run.started_at).isoformat() if run else None,
+                        "controls_active": len(controls_active)},
+        "pipelines": {"assets": len(assets),
+                      "airflow_assets": len([a for a in assets if a.provider == "apache-airflow"]),
+                      "pg_assets": len([a for a in assets if a.provider == "postgresql"]),
+                      "open_findings": len(open_findings),
+                      "services": sorted({f"{a.provider}/{a.service}" for a in assets})},
+        # struktur produk pilot (bukan telemetri): supervisor + 4 agen spesialis
+        "agents": {"specialists": ["SRE", "Data Engineer", "DBA", "Compliance & FinOps"],
+                   "supervisor": "P0"},
+        # status roadmap pilot (keputusan desain, bukan hasil ukur)
+        "maturity": {"level": "L4", "stage": "Diagnose", "next": "L5 Act (Human-in-the-Loop)"},
+    }
+
+
+# --- Chat copilot (stub deterministik evidence-bound; LLM nyata menyusul) ---
+
+_AGENT_BY_DOMAIN = {
+    "ops": ("Agen SRE", "SRE"),
+    "engineering": ("Agen Data Engineer", "Data Engineer"),
+    "lineage": ("Agen Data Engineer", "Data Engineer"),
+    "dba": ("Agen DBA", "DBA"),
+    "security": ("Agen Compliance & FinOps", "Compliance & FinOps"),
+    "governance": ("Agen Compliance & FinOps", "Compliance & FinOps"),
+}
+
+# routing kata-kunci deterministik → domain kontrol (tanpa LLM)
+_KEYWORD_DOMAINS = {
+    "lock": "engineering", "xact": "engineering",
+    "dead tuple": "dba", "vacuum": "dba", "bloat": "dba",
+    "ssl": "security", "tls": "security",
+    "dag": "ops", "airflow": "ops", "task": "ops", "sla": "ops",
+    "lineage": "lineage", "facet": "lineage",
+    "audit": "governance", "purge": "governance", "retention": "governance",
+}
+
+
+class ChatBody(BaseModel):
+    message: str
+    persona: str = "all"
+
+
+def _chat_answer(s, tenant_id: str, message: str, persona: str) -> dict:
+    controls = {c.control_id: c for c in s.execute(select(Control)).scalars().all()}
+    findings = s.execute(select(Finding).where(Finding.tenant_id == tenant_id)
+                         .order_by(Finding.last_seen_at.desc())).scalars().all()
+    live = [f for f in findings if f.status in ("open", "acknowledged", "remediating")]
+    run = s.execute(select(AssessmentRun).where(AssessmentRun.tenant_id == tenant_id)
+                    .order_by(AssessmentRun.started_at.desc())).scalars().first()
+    unknown_n = 0
+    if run:
+        unknown_n = len(s.execute(select(ControlResult).where(
+            ControlResult.tenant_id == tenant_id,
+            ControlResult.assessment_id == run.assessment_id,
+            ControlResult.status == "unknown")).scalars().all())
+
+    msg = (message or "").lower()
+    domains = {d for kw, d in _KEYWORD_DOMAINS.items() if kw in msg}
+    picked = [f for f in live if not domains or
+              (controls.get(f.control_id) and controls[f.control_id].domain in domains)]
+    fallback_all = False
+    if domains and not picked and live:
+        picked, fallback_all = live, True
+
+    claims, agents, ev_refs, kn_refs, risks = [], [], [], [], []
+    if picked:
+        claims.append(f"Terdapat {len(picked)} temuan aktif yang relevan"
+                      + (f" dengan topik '{message.strip()}'" if domains and not fallback_all else "")
+                      + " — semuanya terikat bukti telemetri.")
+        if fallback_all:
+            claims.append(f"Tidak ada temuan pada domain {sorted(domains)}; "
+                          "berikut seluruh temuan aktif yang tersedia.")
+        for f in picked[:5]:
+            c = controls.get(f.control_id)
+            claims.append(f"{f.control_id} (severity {f.severity}, status {f.status}): "
+                          f"{f.reason or c.statement if c else f.reason}")
+            ev_refs.extend(f.evidence_refs or [])
+            kn_refs.extend(f.knowledge_refs or [])
+            agent = _AGENT_BY_DOMAIN.get(c.domain, ("Agen SRE", "SRE")) if c else ("Agen SRE", "SRE")
+            agents.append({"name": agent[0], "role": agent[1],
+                           "text": f"{c.statement if c else f.control_id}: {f.reason}"})
+            if f.severity in ("high", "critical"):
+                risks.append(f"{f.control_id} berdampak tinggi — prioritaskan remediasi.")
+    else:
+        if live:
+            claims.append(f"Tidak ada temuan aktif yang cocok dengan '{message.strip()}'. "
+                          f"Total {len(live)} temuan aktif di luar topik ini.")
+        else:
+            claims.append("Tidak ada temuan aktif di tenant ini berdasarkan assessment terakhir.")
+        if not run:
+            claims.append("Belum ada assessment yang dijalankan — hubungkan agent lalu "
+                          "jalankan assessment untuk menghasilkan bukti.")
+
+    if not run:
+        uncertainty = "tinggi — belum ada assessment; tidak ada bukti telemetri tersimpan"
+    elif unknown_n:
+        uncertainty = (f"sedang — {unknown_n} kontrol berstatus unknown "
+                       "(bukti tidak lengkap; ketiadaan bukti ≠ kepatuhan)")
+    else:
+        uncertainty = "rendah — semua kontrol terevaluasi dari bukti terbaru"
+
+    if unknown_n:
+        risks.append("Kontrol berstatus unknown tidak boleh diperlakukan sebagai patuh.")
+    risks.append("Rekomendasi bersifat recommendation-only (MVP); eksekusi remediasi L5 "
+                 "memerlukan persetujuan eksplisit manusia.")
+    verification_steps = []
+    if run:
+        verification_steps.append(
+            f"Verifikasi assessment {run.assessment_id[:8]} di tab Rule Engine dan buka "
+            "bukti telemetri tiap kontrol fail/unknown.")
+    verification_steps += [
+        "Jalankan ulang assessment setelah remediasi untuk memastikan status berubah.",
+        "Cek audit trail di tab Insiden untuk setiap keputusan approval.",
+    ]
+    if not ev_refs:
+        ev_refs_note = "tidak ada ref bukti — jawaban bukan dari telemetri"
+        claims.append(f"Bukti: {ev_refs_note}.")
+    return {
+        "mode": "deterministic-stub", "llm": False, "persona": persona,
+        "claims": claims, "agents": agents,
+        "evidence_refs": sorted(set(ev_refs)), "knowledge_refs": sorted(set(kn_refs)),
+        "uncertainty": uncertainty, "risks": risks,
+        "verification_steps": verification_steps,
+        "open_findings": len(live),
+    }
+
+
+@app.post("/api/chat")
+def api_chat(body: ChatBody, auth: AuthContext = Depends(get_auth), s=Depends(get_db)):
+    """Copilot deterministik evidence-bound (stub contract design.md, tanpa LLM dulu)."""
+    return _chat_answer(s, auth.tenant_id, body.message, body.persona)
+
+
+class DecisionBody(BaseModel):
+    finding_id: str
+    decision: str  # approved | rejected
+
+
+@app.post("/api/remediation/decision")
+def api_remediation_decision(body: DecisionBody, auth: AuthContext = Depends(get_auth),
+                             s=Depends(get_db)):
+    """HITL approval MVP: catat keputusan + audit. TIDAK mengeksekusi apa pun (D5)."""
+    auth.require_write()
+    if body.decision not in ("approved", "rejected"):
+        return err(422, "decision harus approved|rejected", "invalid_decision")
+    f = s.execute(select(Finding).where(Finding.tenant_id == auth.tenant_id,
+                                        Finding.finding_id == body.finding_id)).scalars().first()
+    if f is None:
+        return err(404, "finding tidak ditemukan di tenant ini", "not_found")
+    service.audit(s, auth.tenant_id, auth.actor, "remediation.decision",
+                  target=body.finding_id,
+                  outcome="allow" if body.decision == "approved" else "deny",
+                  detail={"decision": body.decision, "mode": "recommendation-only",
+                          "executed": False})
+    s.commit()
+    return {"ok": True, "executed": False, "mode": "recommendation-only",
+            "note": "MVP recommendation-only — eksekusi L5 belum diaktifkan"}
 
 
 @app.get("/api/assessments")
