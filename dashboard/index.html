@@ -369,6 +369,8 @@ const PERSONAS = [
   {id: 'gov', label: 'Governance & FinOps', domains: ['security', 'governance']},
 ];
 let persona = 'all';
+let userRole = 'admin';
+let canWrite = true;
 const personaDomains = () => (PERSONAS.find(p => p.id === persona) || PERSONAS[0]).domains;
 
 /* ---------- state ---------- */
@@ -853,9 +855,9 @@ function renderIncidents() {
         <div class="flex items-center gap-3 mt-3 flex-wrap">
           <span class="text-[11px] text-slate-400">Otorisasi oleh: <span class="text-slate-200 font-semibold">Teknisi SRE / DBA On-Duty</span></span>
           <div class="flex-1"></div>
-          <button class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800 text-[12px] text-slate-300 hover:border-amber-500/40" data-risk="${esc(f.finding_id)}"><i class="fa-solid fa-scale-balanced mr-1"></i>Accept Risk</button>
+          ${canWrite ? `<button class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800 text-[12px] text-slate-300 hover:border-amber-500/40" data-risk="${esc(f.finding_id)}"><i class="fa-solid fa-scale-balanced mr-1"></i>Accept Risk</button>
           <button class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800 text-[12px] text-slate-300 hover:border-rose-500/40" data-rej="${esc(f.finding_id)}">Tolak</button>
-          <button class="px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[12px] font-semibold hover:bg-emerald-500/30" data-app="${esc(f.finding_id)}"><i class="fa-solid fa-hand-holding-heart mr-1"></i>Setujui &amp; Eksekusi Remediasi (L5 Act)</button>
+          <button class="px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[12px] font-semibold hover:bg-emerald-500/30" data-app="${esc(f.finding_id)}"><i class="fa-solid fa-hand-holding-heart mr-1"></i>Setujui &amp; Eksekusi Remediasi (L5 Act)</button>` : '<span class="badge b-slate">Read-Only — aksi tulis butuh role dba/sre/admin</span>'}
         </div>
       </div>`;
     }).join('');
@@ -970,8 +972,11 @@ function renderMaturity() {
    PERSONA
    ========================================================= */
 function renderPersona() {
+  const roleBadge = canWrite
+    ? `<span class="badge b-emerald whitespace-nowrap">${esc(userRole)}</span>`
+    : `<span class="badge b-slate whitespace-nowrap">${esc(userRole)} · read-only</span>`;
   $('#persona-switch').innerHTML = PERSONAS.map(p =>
-    `<button class="pbtn ${persona === p.id ? 'on' : ''}" data-persona="${p.id}">${esc(p.label)}</button>`).join('');
+    `<button class="pbtn ${persona === p.id ? 'on' : ''}" data-persona="${p.id}">${esc(p.label)}</button>`).join('') + roleBadge;
   $$('#persona-switch [data-persona]').forEach(b => b.onclick = () => {
     persona = b.dataset.persona; renderPersona(); renderAll();
     toast('info', `Persona: ${b.textContent} — tampilan disaring sesuai domain.`);
@@ -1117,9 +1122,12 @@ async function boot() {
     if (r.status === 401) return showLogin();
     const d = await r.json();
     S.summary = d;
+    userRole = d.role || 'viewer';
+    canWrite = d.can_write !== false;
     showApp();
-    const who = d.tenant_id || '—';
-    $('#avatar').textContent = who.replace('tenant-', '').slice(0, 2).toUpperCase() || 'AD';
+    const who = d.username || d.tenant_id || '—';
+    $('#avatar').textContent = who.slice(0, 2).toUpperCase() || 'AD';
+    $('#avatar').title = `${who} • ${userRole}`;
     renderPersona();
     await loadData();
     renderAll();

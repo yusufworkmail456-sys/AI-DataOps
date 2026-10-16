@@ -67,8 +67,9 @@ def get_auth(request: Request) -> AuthContext:
         s.close()
 
 
-def get_agent(request: Request) -> tuple[str, Agent]:
-    """Auth agent via X-Agent-Key or Authorization: Bearer → (tenant_id, Agent)."""
+def get_agent(request: Request, s=None) -> tuple[str, Agent]:
+    """Auth agent via X-Agent-Key or Authorization: Bearer (tenant_id, Agent).
+    Pass s=Depends(get_db) to share session (last_seen_at ter-commit)."""
     key = request.headers.get("X-Agent-Key", "")
     if not key:
         bearer = request.headers.get("Authorization", "")
@@ -76,8 +77,9 @@ def get_agent(request: Request) -> tuple[str, Agent]:
             key = bearer[7:]
     if not key:
         raise HTTPException(401, {"error": "X-Agent-Key wajib", "code": "unauthenticated"})
-    factory = request.app.state.db_factory
-    s = factory()
+    own_session = s is None
+    if own_session:
+        s = request.app.state.db_factory()
     try:
         kh = hash_key(key)
         agent = s.execute(select(Agent).where(Agent.agent_key_hash == kh,
@@ -87,4 +89,5 @@ def get_agent(request: Request) -> tuple[str, Agent]:
                                       "code": "invalid_agent_key"})
         return agent.tenant_id, agent
     finally:
-        s.close()
+        if own_session:
+            s.close()

@@ -188,7 +188,7 @@ def ingest_enroll(body: EnrollBody, s=Depends(get_db)):
 @app.post("/ingest/discovery")
 def ingest_discovery(body: DiscoveryBody, request: Request, s=Depends(get_db)):
     try:
-        tenant_id, agent = get_agent(request)
+        tenant_id, agent = get_agent(request, s)
     except HTTPException as e:
         service.audit(s, "", "agent:unknown", "ingest.discovery", outcome="deny",
                       detail={"code": getattr(e.detail, 'get', lambda *_: 'err')("code")})
@@ -238,7 +238,7 @@ def ingest_discovery(body: DiscoveryBody, request: Request, s=Depends(get_db)):
 def ingest_evidence(body: EvidenceBody, request: Request, s=Depends(get_db)):
     """Batch, idempotent by source_ref. Creds tidak pernah masuk payload (agent-side)."""
     try:
-        tenant_id, agent = get_agent(request)
+        tenant_id, agent = get_agent(request, s)
     except HTTPException as e:
         service.audit(s, "", "agent:unknown", "ingest.evidence", outcome="deny")
         s.commit()
@@ -276,7 +276,7 @@ async def ingest_lineage(request: Request, s=Depends(get_db)):
     """OpenLineage RunEvent POST (Airflow listener). Auth: Bearer agent key.
     Simpan facets sebagai evidence_type='openlineage' → RULE-LIN-002 lineage_check."""
     try:
-        tenant_id, agent = get_agent(request)
+        tenant_id, agent = get_agent(request, s)
     except HTTPException:
         raise
     agent.last_seen_at = datetime.now(timezone.utc)
@@ -325,7 +325,7 @@ async def ingest_lineage(request: Request, s=Depends(get_db)):
 @app.get("/agent/config")
 def agent_config(request: Request, s=Depends(get_db)):
     """interval, rules version, creds refs — TANPA nilai creds (agent tarik terenkripsi nanti)."""
-    tenant_id, agent = get_agent(request)
+    tenant_id, agent = get_agent(request, s)
     controls = s.execute(select(Control).where(Control.active == True)).scalars().all()  # noqa: E712
     return {
         "agent_id": agent.agent_id, "tenant_id": tenant_id,
@@ -432,6 +432,9 @@ def api_summary(auth: AuthContext = Depends(get_auth), s=Depends(get_db)):
     pass_rate = round(counts["pass"] / applicable * 100, 1) if applicable else None
     return {
         "tenant_id": auth.tenant_id,
+        "username": auth.actor.replace("user:", ""),
+        "role": auth.role,
+        "can_write": auth.can_write,
         "rule_engine": {**counts, "total": total, "pass_rate": pass_rate,
                         "has_assessment": run is not None,
                         "assessment_id": run.assessment_id if run else None,
