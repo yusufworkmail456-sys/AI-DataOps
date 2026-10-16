@@ -16,8 +16,8 @@ from . import rule_engine, service
 from .auth import (AuthContext, ROLE_RANK, get_agent, get_auth, hash_key,
                    hash_password, verify_password)
 from .models import (Agent, AssessmentRun, Asset, AuditEvent, Control,
-                     ControlResult, EvidenceRecord, Finding, Integration,
-                     Session, User, make_engine, make_session_factory)
+                     ControlResult, EvidenceRecord, Exception_, Finding,
+                     Integration, Session, User, make_engine, make_session_factory)
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("dataops.api")
@@ -577,6 +577,71 @@ def persona_label(persona):
 class DecisionBody(BaseModel):
     finding_id: str
     decision: str  # approved | rejected
+
+
+class ExceptionBody(BaseModel):
+    finding_id: str
+    rationale: str
+    expiry: str | None = None  # ISO date; None = tanpa expiry
+
+
+@app.get("/api/exceptions")
+def api_list_exceptions(auth: AuthContext = Depends(get_auth), s=Depends(get_db)):
+    rows = s.execute(select(Exception_).where(Exception_.tenant_id == auth.tenant_id)
+                     .order_by(Exception_.status, Exception_.expiry)).scalars().all()
+    return {"exceptions": [{
+        "exception_id": e.exception_id, "finding_id": e.finding_id,
+        "rationale": e.rationale, "owner": e.owner, "approver": e.approver,
+        "expiry": e.expiry.isoformat() if e.expiry else None, "status": e.status,
+    } for e in rows]}
+
+
+@app.post("/api/exceptions")
+def api_create_exception(body: ExceptionBody, auth: AuthContext = Depends(get_auth),
+                         s=Depends(get_db)):
+    """Accepted risk: fail tetap fail di control result; finding → accepted_risk.
+    Wajib rationale; approver = pembuat (admin). Semua ter-audit."""
+    auth.require_write()
+    if not body.rationale.strip():
+        return err(422, "rationale wajib diisi", "invalid_rationale")
+    f = s.execute(select(Finding).where(Finding.tenant_id == auth.tenant_id,
+                                        Finding.finding_id == body.finding_id)
+                  ).scalars().first()
+    if f is None:
+        return err(404, "finding tidak ditemukan di tenant ini", "not_found")
+    now = datetime.now(timezone.utc)
+    expiry = _parse_dt(body.expiry) if body.expiry else None
+    if expiry and expiry <= now:
+        return err(422, "expiry harus di masa depan", "invalid_expiry")
+    e = Exception_(tenant_id=auth.tenant_id, finding_id=body.finding_id,
+                   rationale=body.rationale.strip(), owner=auth.actor,
+                   approver=auth.actor, expiry=expiry, status="active")
+    s.add(e)
+    # lifecycle terpisah: control result TETAP fail; finding → accepted_risk
+    if f.status in ("open", "acknowledged", "remediating"):
+        f.status = "accepted_risk"
+    service.audit(s, auth.tenant_id, auth.actor, "exception.create",
+                  target=body.finding_id, outcome="allow",
+                  detail={"exception_id": e.exception_id, "rationale": body.rationale.strip()[:200],
+                          "executed": False})
+    s.commit()
+    return {"ok": True, "exception_id": e.exception_id, "finding_status": f.status}
+
+
+@app.post("/api/exceptions/{exception_id}/revoke")
+def api_revoke_exception(exception_id: str, auth: AuthContext = Depends(get_auth),
+                         s=Depends(get_db)):
+    auth.require_write()
+    e = s.execute(select(Exception_).where(Exception_.tenant_id == auth.tenant_id,
+                                           Exception_.exception_id == exception_id)
+                  ).scalars().first()
+    if e is None:
+        return err(404, "exception tidak ditemukan", "not_found")
+    e.status = "revoked"
+    service.audit(s, auth.tenant_id, auth.actor, "exception.revoke",
+                  target=exception_id, outcome="allow")
+    s.commit()
+    return {"ok": True, "status": e.status}
 
 
 @app.post("/api/remediation/decision")

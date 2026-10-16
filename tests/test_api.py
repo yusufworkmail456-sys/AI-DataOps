@@ -227,3 +227,66 @@ class TestAssessmentVersioning:
 def _hash_pw(pw):
     from app.auth import hash_password
     return hash_password(pw)
+
+
+class TestExceptions:
+    """Accepted risk: fail tetap fail di control result; finding → accepted_risk."""
+
+    def test_exception_flow(self, client, enrolled_agent, seed_controls, admin_client):
+        key = enrolled_agent["agent_key"]
+        _discover(client, key)
+        payload = {"provider": "postgresql", "service": "database",
+                   "max_lock_duration_s": 42,
+                   "tables": {"dead_tuple_ratio": {"users": 0.4}},
+                   "ssl_enabled": False, "audit_purge": {}}
+        assert _evidence(client, key, payload=payload).status_code == 200
+        admin_client.post("/api/assessments/run", json={})
+        f = [f for f in admin_client.get("/api/findings").json()["findings"]
+             if f["control_id"] == "RULE-SEC-004" and f["status"] == "open"][0]
+
+        # rationale wajib
+        r = admin_client.post("/api/exceptions", json={"finding_id": f["finding_id"],
+                                                       "rationale": "  "})
+        assert r.status_code == 422
+        # buat exception
+        r = admin_client.post("/api/exceptions", json={
+            "finding_id": f["finding_id"], "rationale": "Pilot non-prod, SSL menyusul"})
+        assert r.status_code == 200
+        assert r.json()["finding_status"] == "accepted_risk"
+        # finding berubah status; control result TETAP fail
+        f2 = [x for x in admin_client.get("/api/findings").json()["findings"]
+              if x["finding_id"] == f["finding_id"]][0]
+        assert f2["status"] == "accepted_risk"
+        results = admin_client.get("/api/control-results").json()["control_results"]
+        assert any(x["control_id"] == "RULE-SEC-004" and x["status"] == "fail" for x in results)
+        # rerun: fail ulang → finding tetap accepted_risk (exception aktif)
+        admin_client.post("/api/assessments/run", json={})
+        f3 = [x for x in admin_client.get("/api/findings").json()["findings"]
+              if x["control_id"] == "RULE-SEC-004"][0]
+        assert f3["status"] == "accepted_risk"
+        # audit
+        evs = admin_client.get("/api/audit-events").json()["audit_events"]
+        assert any(e["action"] == "exception.create" for e in evs)
+        # revoke → rerun balik ke open
+        exc_id = r.json()["exception_id"]
+        assert admin_client.post(f"/api/exceptions/{exc_id}/revoke").status_code == 200
+        admin_client.post("/api/assessments/run", json={})
+        f4 = [x for x in admin_client.get("/api/findings").json()["findings"]
+              if x["control_id"] == "RULE-SEC-004"][0]
+        assert f4["status"] == "open"
+
+    def test_viewer_cannot_create_exception(self, client, viewer_client, enrolled_agent,
+                                            seed_controls):
+        key = enrolled_agent["agent_key"]
+        _discover(client, key)
+        payload = {"provider": "postgresql", "service": "database",
+                   "max_lock_duration_s": 42, "ssl_enabled": False,
+                   "tables": {"dead_tuple_ratio": {"users": 0.4}}, "audit_purge": {}}
+        _evidence(client, key, payload=payload)
+        # trigger assessment sebagai agent-side tak ada; gunakan endpoint write → 403 utk viewer.
+        # cukup: viewer coba POST exception dgn finding_id dummy → harus 403 (bukan 404),
+        # membuktikan RBAC menolak sebelum lookup.
+        r = viewer_client.post("/api/exceptions",
+                               json={"finding_id": "tidak-ada", "rationale": "x"})
+        assert r.status_code == 403
+

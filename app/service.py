@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 
 from .models import (AssessmentRun, Asset, AuditEvent, Control, ControlResult,
-                     EvidenceRecord, Finding, make_session_factory)
+                     EvidenceRecord, Exception_, Finding, make_session_factory)
 from . import rule_engine
 from .rule_engine import ENGINE_VERSION
 
@@ -24,7 +24,20 @@ def upsert_finding(session, tenant_id: str, asset_id: str, control_id: str,
                    evidence_refs: list, knowledge_refs: list, reason: str,
                    now: datetime) -> None:
     """Finding lifecycle terpisah dari control result status: fail baru → open;
-    fail ulang asset+control sama → update last_seen (status lifecycle tidak diubah)."""
+    fail ulang asset+control sama → update last_seen (status lifecycle tidak diubah).
+    Exception aktif (approved, tak expired) → status accepted_risk, bukan open."""
+    # Exception aktif utk asset+control ini: lewat finding mana pun (lama/baru) yg cocok.
+    active_exc_ids = select(Exception_.finding_id).where(
+        Exception_.tenant_id == tenant_id, Exception_.finding_id.is_not(None),
+        Exception_.status == "active",
+        (Exception_.expiry.is_(None)) | (Exception_.expiry > now)).scalar_subquery()
+    has_active_exc = session.execute(
+        select(Finding.finding_id).where(
+            Finding.tenant_id == tenant_id, Finding.asset_id == asset_id,
+            Finding.control_id == control_id,
+            Finding.finding_id.in_(active_exc_ids)
+        ).limit(1)).scalar() is not None
+    status = "accepted_risk" if has_active_exc else "open"
     f = session.execute(
         select(Finding).where(Finding.tenant_id == tenant_id,
                               Finding.asset_id == asset_id,
@@ -35,7 +48,7 @@ def upsert_finding(session, tenant_id: str, asset_id: str, control_id: str,
         session.add(Finding(
             tenant_id=tenant_id, asset_id=asset_id, control_id=control_id,
             control_version=control_version, assessment_id=assessment_id,
-            severity=severity, status="open", evidence_refs=evidence_refs,
+            severity=severity, status=status, evidence_refs=evidence_refs,
             knowledge_refs=knowledge_refs, reason=reason,
             first_seen_at=now, last_seen_at=now))
     else:
@@ -43,6 +56,11 @@ def upsert_finding(session, tenant_id: str, asset_id: str, control_id: str,
         f.assessment_id = assessment_id
         f.evidence_refs = evidence_refs
         f.reason = reason
+        # exception bisa revoke/expired antar run — lifecycle ikut keadaan terkini
+        if f.status == "accepted_risk" and not has_active_exc:
+            f.status = "open"
+        elif f.status == "open" and has_active_exc:
+            f.status = "accepted_risk"
 
 
 def run_assessment(session, tenant_id: str, scope: dict | None = None,

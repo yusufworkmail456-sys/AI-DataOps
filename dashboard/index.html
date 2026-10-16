@@ -774,8 +774,11 @@ function visibleFindings() {
   return S.findings.filter(f => !doms || doms.includes(domainOf(f.control_id)));
 }
 function renderIncidents() {
-  const fs = visibleFindings().filter(f => ['open', 'acknowledged', 'remediating'].includes(f.status));
-  $('#incidents-count').textContent = fs.length + ' menunggu approval';
+  const live = visibleFindings().filter(f => ['open', 'acknowledged', 'remediating'].includes(f.status));
+  const accepted = visibleFindings().filter(f => f.status === 'accepted_risk');
+  const fs = live;
+  $('#incidents-count').textContent = fs.length + ' menunggu approval' +
+    (accepted.length ? ` • ${accepted.length} accepted risk` : '');
   if (!fs.length) {
     $('#incident-cards').innerHTML = `<div class="card p-6 text-[12px] text-slate-500 text-center">
       Belum ada insiden aktif${S.findings.length ? ' untuk persona terpilih' : ''} — tidak ada temuan terbuka dari assessment terakhir.
@@ -811,6 +814,7 @@ function renderIncidents() {
         <div class="flex items-center gap-3 mt-3 flex-wrap">
           <span class="text-[11px] text-slate-400">Otorisasi oleh: <span class="text-slate-200 font-semibold">Teknisi SRE / DBA On-Duty</span></span>
           <div class="flex-1"></div>
+          <button class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800 text-[12px] text-slate-300 hover:border-amber-500/40" data-risk="${esc(f.finding_id)}"><i class="fa-solid fa-scale-balanced mr-1"></i>Accept Risk</button>
           <button class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800 text-[12px] text-slate-300 hover:border-rose-500/40" data-rej="${esc(f.finding_id)}">Tolak</button>
           <button class="px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[12px] font-semibold hover:bg-emerald-500/30" data-app="${esc(f.finding_id)}"><i class="fa-solid fa-hand-holding-heart mr-1"></i>Setujui &amp; Eksekusi Remediasi (L5 Act)</button>
         </div>
@@ -818,6 +822,7 @@ function renderIncidents() {
     }).join('');
     $$('#incident-cards [data-app]').forEach(b => b.onclick = () => decide(b.dataset.app, 'approved'));
     $$('#incident-cards [data-rej]').forEach(b => b.onclick = () => decide(b.dataset.rej, 'rejected'));
+    $$('#incident-cards [data-risk]').forEach(b => b.onclick = () => acceptRisk(b.dataset.risk));
   }
 
   const audit = S.audit;
@@ -827,6 +832,21 @@ function renderIncidents() {
     return `<tr><td class="mono text-[11px]">${esc(fmtT(e.timestamp))}</td><td>${badge(st[0], st[1])}</td>
       <td><span class="chip">${esc(e.action)}</span></td><td class="text-[12px]">${esc(e.actor)}</td><td class="mono text-[11px] text-slate-400">${esc(e.target || '—')}</td></tr>`;
   }).join('') : `<tr><td colspan="5" class="text-[12px] text-slate-500 py-4 text-center">Belum ada audit event.</td></tr>`;
+}
+
+async function acceptRisk(fid) {
+  const rationale = prompt(
+    'Accept risk: catat rationale + approver (wajib).\nContoh: "Pilot non-prod, TLS menyusul Q3".');
+  if (!rationale || !rationale.trim()) { toast('warning', 'Rationale wajib diisi — accept risk dibatalkan.'); return; }
+  try {
+    const r = await post('/api/exceptions', {finding_id: fid, rationale: rationale.trim()});
+    if (r.code) { toast('error', 'Gagal: ' + (r.error || r.code)); return; }
+    toast('warning', 'Risk diterima (accepted_risk) — control result tetap FAIL; tercatat di audit.');
+    await loadData(['findings', 'audit']);
+    renderIncidents();
+  } catch (e) {
+    if (String(e.message) !== 'unauthenticated') toast('error', 'Gagal accept risk: ' + e.message);
+  }
 }
 
 async function decide(fid, decision) {
