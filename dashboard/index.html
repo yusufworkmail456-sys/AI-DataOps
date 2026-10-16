@@ -591,6 +591,7 @@ const RULE_DOMAIN_HINT = {'RULE-ENG-001': 'engineering', 'RULE-DBA-003': 'dba', 
   'RULE-GOV-009': 'governance', 'RULE-OPR-001': 'ops', 'RULE-OPR-002': 'ops', 'RULE-LIN-002': 'lineage'};
 
 function renderEngine() {
+  const PAGE = 50;
   const all = visibleResults();
   const counts = {all: all.length, pass: 0, fail: 0, unknown: 0, not_applicable: 0};
   all.forEach(r => counts[r.status] != null && counts[r.status]++);
