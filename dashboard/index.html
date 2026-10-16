@@ -4,248 +4,995 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI DataOps Intelligence</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: { extend: {
+    fontFamily: { sans: ['"Plus Jakarta Sans"','ui-sans-serif','system-ui'], mono: ['"JetBrains Mono"','ui-monospace','monospace'] },
+    colors: { brand: { 400:'#60a5fa',500:'#3b82f6',600:'#2563eb',700:'#1d4ed8' } }
+  } }
+};
+</script>
 <style>
   :root { color-scheme: dark; }
-  * { box-sizing: border-box; margin: 0; }
-  body {
-    background: #020617; /* slate-950 */
-    color: #e2e8f0;
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    min-height: 100vh;
-  }
-  header {
-    display: flex; align-items: center; gap: 12px;
-    padding: 14px 24px; border-bottom: 1px solid #1e293b;
-  }
-  header h1 { font-size: 16px; font-weight: 600; color: #f8fafc; }
-  header .brand { color: #3b82f6; font-weight: 700; }
-  header .spacer { flex: 1; }
-  header .who { font-size: 12px; color: #94a3b8; }
-  nav {
-    display: flex; gap: 4px; padding: 0 24px;
-    border-bottom: 1px solid #1e293b; background: #0f172a;
-  }
-  nav button {
-    appearance: none; border: 0; background: transparent; color: #94a3b8;
-    padding: 10px 16px; font-size: 13px; cursor: pointer;
-    border-bottom: 2px solid transparent;
-  }
-  nav button:hover { color: #e2e8f0; }
-  nav button.active { color: #60a5fa; border-bottom-color: #3b82f6; }
-  main { padding: 24px; max-width: 1200px; margin: 0 auto; }
-  .tab-panel { display: none; }
-  .tab-panel.active { display: block; }
-  .tab-panel h2 { font-size: 15px; font-weight: 600; color: #f1f5f9; margin-bottom: 4px; }
-  .tab-panel .sub { font-size: 12px; color: #64748b; margin-bottom: 16px; }
-  .placeholder {
-    border: 1px dashed #1e40af; border-radius: 8px;
-    background: rgba(59,130,246,.06);
-    padding: 24px; font-size: 13px; color: #93c5fd;
-  }
-  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
-  .card {
-    background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 14px;
-  }
-  .card .label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #64748b; }
-  .card .value { font-size: 24px; font-weight: 700; color: #60a5fa; margin-top: 4px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; color: #64748b; font-weight: 500; font-size: 11px; text-transform: uppercase; padding: 8px; border-bottom: 1px solid #1e293b; }
-  td { padding: 8px; border-bottom: 1px solid #172033; color: #cbd5e1; }
-  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-  .pill.pass { background: rgba(34,197,94,.15); color: #4ade80; }
-  .pill.fail { background: rgba(239,68,68,.15); color: #f87171; }
-  .pill.unknown { background: rgba(234,179,8,.15); color: #facc15; }
-  .pill.not_applicable { background: rgba(100,116,139,.2); color: #94a3b8; }
-  .pill.open, .pill.fresh { background: rgba(239,68,68,.15); color: #f87171; }
-  .pill.acknowledged { background: rgba(234,179,8,.15); color: #facc15; }
-  .pill.resolved, .pill.accepted_risk, .pill.remediating { background: rgba(34,197,94,.15); color: #4ade80; }
-  .empty { color: #475569; font-size: 13px; padding: 16px 0; }
-  #login-box { max-width: 340px; margin: 15vh auto; background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 28px; }
-  #login-box h2 { color: #60a5fa; margin-bottom: 16px; font-size: 16px; }
-  #login-box input { width: 100%; padding: 9px 12px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #334155; background: #020617; color: #e2e8f0; font-size: 13px; }
-  #login-box button { width: 100%; padding: 9px; border: 0; border-radius: 6px; background: #2563eb; color: #fff; font-weight: 600; cursor: pointer; }
-  #login-box .err { color: #f87171; font-size: 12px; margin-bottom: 8px; min-height: 16px; }
+  html, body { font-size: 13px; }
+  .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #94a3b8; }
+  .card { background: #0f172a; border: 1px solid #1e293b; border-radius: 1rem; }
+  .inner { background: rgba(2,6,23,.7); border: 1px solid #1e293b; border-radius: .75rem; }
+  .chip { font-family: "JetBrains Mono", monospace; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: rgba(30,41,59,.8); color: #cbd5e1; }
+  .badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid transparent; letter-spacing:.02em; }
+  .b-emerald { background: rgba(16,185,129,.2); color: #6ee7b7; border-color: rgba(16,185,129,.35); }
+  .b-rose { background: rgba(244,63,94,.2); color: #fda4af; border-color: rgba(244,63,94,.35); }
+  .b-amber { background: rgba(245,158,11,.2); color: #fcd34d; border-color: rgba(245,158,11,.35); }
+  .b-slate { background: rgba(51,65,85,.6); color: #cbd5e1; border-color: #334155; }
+  .b-blue { background: rgba(59,130,246,.15); color: #93c5fd; border-color: rgba(59,130,246,.3); }
+  .b-demo { background: rgba(168,85,247,.18); color: #d8b4fe; border-color: rgba(168,85,247,.35); }
+  .pillf { font-size: 12px; padding: 4px 12px; border-radius: 999px; border: 1px solid #1e293b; color: #94a3b8; background: rgba(2,6,23,.6); cursor: pointer; }
+  .pillf:hover { color: #e2e8f0; }
+  .pillf.on { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .tabbtn { display: flex; align-items: center; gap: 8px; padding: 12px 14px; font-size: 12px; color: #94a3b8; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
+  .tabbtn:hover { color: #e2e8f0; }
+  .tabbtn.on { color: #60a5fa; border-bottom-color: #3b82f6; }
+  .pbtn { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid #1e293b; color: #94a3b8; background: rgba(2,6,23,.6); cursor: pointer; }
+  .pbtn.on { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .panel { display: none; }
+  .panel.on { display: block; }
+  .dot { width: 8px; height: 8px; border-radius: 999px; display: inline-block; }
+  pre.mono { font-family: "JetBrains Mono", monospace; font-size: 11px; line-height: 1.5; color: #cbd5e1; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #64748b; font-weight: 500; padding: 10px 12px; border-bottom: 1px solid #1e293b; }
+  td { padding: 10px 12px; border-bottom: 1px solid #172033; color: #cbd5e1; vertical-align: top; }
+  tr:hover td { background: rgba(30,41,59,.35); }
+  ::-webkit-scrollbar { width: 8px; height: 8px; } ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
 </style>
 </head>
-<body>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen">
 
-<div id="login-box" hidden>
-  <h2><span class="brand">DataOps</span> Login</h2>
-  <div class="err" id="login-err"></div>
-  <input id="login-user" placeholder="username" autocomplete="username">
-  <input id="login-pass" type="password" placeholder="password" autocomplete="current-password">
-  <button id="login-btn">Masuk</button>
+<!-- ===== LOGIN ===== -->
+<div id="login-box" hidden class="max-w-sm mx-auto mt-[14vh] card p-7">
+  <div class="flex items-center gap-3 mb-5">
+    <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 grid place-items-center"><i class="fa-solid fa-microchip text-white"></i></div>
+    <div><div class="font-semibold text-slate-100">AI DataOps Intelligence</div><div class="lbl">masuk untuk lanjut</div></div>
+  </div>
+  <div id="login-err" class="text-rose-400 text-[12px] min-h-[16px] mb-2"></div>
+  <input id="login-user" placeholder="username" autocomplete="username" class="w-full mb-2 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-200 text-[13px]">
+  <input id="login-pass" type="password" placeholder="password" autocomplete="current-password" class="w-full mb-3 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-200 text-[13px]">
+  <button id="login-btn" class="w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[13px]">Masuk</button>
 </div>
 
+<!-- ===== APP ===== -->
 <div id="app" hidden>
-  <header>
-    <h1><span class="brand">AI DataOps</span> Intelligence</h1>
-    <div class="spacer"></div>
-    <span class="who" id="whoami"></span>
-    <button class="pill" style="border:0;cursor:pointer;background:#1e293b;color:#94a3b8;padding:4px 10px;border-radius:6px" id="logout-btn">Keluar</button>
+  <!-- Header -->
+  <header class="h-16 sticky top-0 z-30 bg-slate-900/90 backdrop-blur border-b border-slate-800 px-5 flex items-center gap-4">
+    <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 grid place-items-center shrink-0"><i class="fa-solid fa-microchip text-white"></i></div>
+    <div class="min-w-0">
+      <div class="flex items-center gap-2">
+        <span class="font-semibold text-slate-100">AI DataOps Intelligence</span>
+        <span class="badge b-blue font-mono">v0.1 PILOT MVP</span>
+      </div>
+      <div class="text-[11px] text-slate-400 truncate">Platform Intelijen Pipeline Data Berbasis Bukti Deterministik</div>
+    </div>
+    <div class="hidden xl:flex items-center gap-2 ml-2 px-3 py-1.5 rounded-full bg-slate-950/70 border border-slate-800">
+      <span class="dot bg-emerald-500 animate-pulse"></span>
+      <span class="text-[11px] text-slate-400">Target Pilot: <span class="text-slate-200">PostgreSQL (Production) + Apache Airflow</span></span>
+    </div>
+    <div class="flex-1"></div>
+    <div class="hidden lg:flex items-center gap-1 p-1 rounded-full bg-slate-950/70 border border-slate-800" id="persona-switch"></div>
+    <span class="badge b-emerald hidden md:inline-flex items-center gap-1"><i class="fa-solid fa-shield-halved"></i> Read-Only Default</span>
+    <button class="relative w-9 h-9 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-slate-200" title="Notifikasi">
+      <i class="fa-regular fa-bell"></i><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500"></span>
+    </button>
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 grid place-items-center text-[11px] font-semibold text-slate-300" id="avatar">AD</div>
+      <button id="logout-btn" class="text-[12px] text-slate-400 hover:text-slate-200"><i class="fa-solid fa-right-from-bracket"></i></button>
+    </div>
   </header>
-  <nav>
-    <button data-tab="topology" class="active">Topology</button>
-    <button data-tab="engine">Engine</button>
-    <button data-tab="agents">Agents</button>
-    <button data-tab="incidents">Incidents</button>
-    <button data-tab="governance">Governance</button>
-    <button data-tab="maturity">Maturity</button>
-  </nav>
-  <main>
-    <section class="tab-panel active" id="tab-topology">
-      <h2>Topology</h2>
-      <div class="sub">Asset discovery &amp; source-to-sink (sejauh evidence tersedia)</div>
-      <div class="cards" id="topo-cards"></div>
-      <table><thead><tr><th>Asset</th><th>Provider</th><th>Service</th><th>Type</th><th>Env</th><th>Observed</th></tr></thead>
-      <tbody id="topo-assets"></tbody></table>
+
+  <!-- Sub-header nav -->
+  <div class="bg-slate-900 border-b border-slate-800 px-5 flex items-center gap-1 overflow-x-auto">
+    <div class="tabbtn on" data-tab="topology"><i class="fa-solid fa-diagram-project"></i> Pipeline Observability &amp; Lineage</div>
+    <div class="tabbtn" data-tab="engine"><i class="fa-solid fa-square-check"></i> Rule Engine Deterministik <span class="chip" id="nav-cnt-engine">0</span></div>
+    <div class="tabbtn" data-tab="agents"><i class="fa-solid fa-robot"></i> Orkestrasi AI &amp; Supervisor <span class="badge b-blue">P0</span></div>
+    <div class="tabbtn" data-tab="incidents"><i class="fa-solid fa-triangle-exclamation text-rose-400"></i> Insiden &amp; Human-in-the-Loop <span class="chip" id="nav-cnt-incidents">0</span></div>
+    <div class="tabbtn" data-tab="governance"><i class="fa-solid fa-book-bookmark"></i> Knowledge &amp; Standar Otoritatif</div>
+    <div class="tabbtn" data-tab="maturity"><i class="fa-solid fa-layer-group"></i> Maturitas L1–L5 &amp; Roadmap</div>
+    <div class="flex-1"></div>
+    <span class="badge b-blue hidden xl:inline-flex whitespace-nowrap"><i class="fa-solid fa-circle-check mr-1"></i> 100% Verifikasi Bukti: Ketiadaan bukti telemetri ≠ kepatuhan</span>
+  </div>
+
+  <main class="max-w-[1400px] mx-auto p-5">
+    <div id="global-note" class="mb-4"></div>
+
+    <!-- KPI bar -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5" id="kpi-bar"></div>
+
+    <!-- ================= TAB 1 TOPOLOGY ================= -->
+    <section class="panel on" id="panel-topology">
+      <div class="card p-5 mb-4">
+        <div class="flex items-start gap-3 flex-wrap">
+          <div class="flex-1 min-w-[260px]">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h2 class="font-semibold text-slate-100">Topologi Data Plane &amp; Silsilah OpenLineage (L2 Observe)</h2>
+              <span class="badge b-emerald"><span class="dot bg-emerald-400 mr-1 animate-pulse"></span>Live Heartbeat 10s</span>
+            </div>
+            <p class="text-[12px] text-slate-500 mt-1">Node dibentuk dari aset hasil discovery agent. Node tanpa data nyata ditandai <span class="badge b-demo">contoh</span>.</p>
+          </div>
+          <div class="flex gap-2">
+            <button id="btn-refresh-metric" class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800 text-[12px] text-slate-300 hover:border-blue-500/40"><i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh Metrik</button>
+            <button id="btn-sim-anomali" class="px-3 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/40 text-[12px] text-rose-200 hover:bg-rose-500/25"><i class="fa-solid fa-bolt mr-1"></i> Simulasi Anomali Pipeline</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-5 mb-4">
+        <div class="inner bg-slate-950/80 p-4" id="topo-flow"></div>
+        <div id="node-drawer" hidden class="mt-4 inner p-4 border-blue-500/30"></div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="card p-5">
+          <div class="flex items-center gap-2 mb-3">
+            <i class="fa-solid fa-file-code text-purple-400"></i>
+            <h3 class="font-semibold text-slate-100 text-[13px]">Model Kanonis &amp; Standarisasi Metadata (Lapisan 02)</h3>
+          </div>
+          <pre class="mono inner p-3 overflow-auto" id="canonical-json"></pre>
+          <p class="text-[11px] text-slate-500 mt-2"><i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i><span id="canonical-note"></span></p>
+        </div>
+        <div class="card p-5">
+          <div class="flex items-center gap-2 mb-3">
+            <i class="fa-solid fa-tower-broadcast text-blue-400"></i>
+            <h3 class="font-semibold text-slate-100 text-[13px]">Koleksi Telemetri Runtime Real-Time (Lapisan 01)</h3>
+          </div>
+          <div id="telemetry-list" class="space-y-2"></div>
+        </div>
+      </div>
     </section>
-    <section class="tab-panel" id="tab-engine">
-      <h2>Rule Engine</h2>
-      <div class="sub">Control results dari assessment terakhir — unknown ≠ compliant</div>
-      <div class="cards" id="engine-cards"></div>
-      <table><thead><tr><th>Control</th><th>v</th><th>Status</th><th>Reason</th><th>Evaluated</th></tr></thead>
-      <tbody id="engine-results"></tbody></table>
+
+    <!-- ================= TAB 2 RULE ENGINE ================= -->
+    <section class="panel" id="panel-engine">
+      <div class="card mb-4">
+        <div class="p-5 border-b border-slate-800">
+          <div class="flex items-start gap-3 flex-wrap">
+            <div class="flex-1 min-w-[260px]">
+              <div class="flex items-center gap-2 flex-wrap">
+                <h2 class="font-semibold text-slate-100">Rule Engine Deterministik (Lapisan 04 Evaluation)</h2>
+                <span class="badge b-emerald"><i class="fa-solid fa-microchip mr-1"></i> Tanpa Risiko Halusinasi LLM</span>
+              </div>
+              <p class="text-[12px] text-slate-500 mt-1">Fakta biner diverifikasi engine, LLM hanya memberi konteks. Missing evidence → <span class="text-amber-300">unknown</span>, tidak pernah <span class="text-emerald-300">pass</span>.</p>
+            </div>
+            <div class="flex gap-1 flex-wrap" id="engine-filters"></div>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table>
+            <thead><tr><th>ID &amp; Aturan</th><th>Entitas Target</th><th>Hasil</th><th>Bukti Telemetri</th><th>Rujukan Regulasi</th><th>Aksi</th></tr></thead>
+            <tbody id="engine-rows"></tbody>
+          </table>
+        </div>
+        <div class="p-4 flex items-center gap-3 flex-wrap border-t border-slate-800">
+          <span class="text-[11px] text-slate-500"><i class="fa-solid fa-circle-info mr-1"></i>Engine deterministik memverifikasi fakta biner sebelum LLM memberi konteks</span>
+          <div class="flex-1"></div>
+          <span class="chip" id="engine-latency">latency engine: —</span>
+        </div>
+      </div>
     </section>
-    <section class="tab-panel" id="tab-agents">
-      <h2>Agents</h2>
-      <div class="sub">Integrasi agent-based (PG + Airflow) &amp; capability matrix</div>
-      <div class="placeholder">Stub: daftar agent + capability (discover/observe/evaluate) — konten visual menyusul.</div>
+
+    <!-- ================= TAB 3 AGENTS ================= -->
+    <section class="panel" id="panel-agents">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="card p-5">
+          <h2 class="font-semibold text-slate-100 text-[13px]">Supervisor &amp; Agen Spesialis</h2>
+          <p class="text-[11px] text-slate-500 mb-3">Isolasi per domain; setiap klaim wajib disertai bukti telemetri.</p>
+          <div class="inner bg-gradient-to-br from-blue-950 to-slate-950 p-3 mb-3 border-blue-500/20">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-crown text-amber-300"></i>
+              <span class="font-semibold text-slate-100 text-[12px]">DataOps Supervisor</span>
+              <div class="flex-1"></div><span class="badge b-emerald">ONLINE</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">Klasifikasi intent → pilih tool → sintesis jawaban berbasis bukti.</p>
+          </div>
+          <div id="agent-list" class="space-y-2"></div>
+          <div class="inner p-3 mt-3 space-y-1">
+            <div class="text-[11px] text-emerald-300"><i class="fa-solid fa-shield-halved mr-1"></i>Isolasi Tenant: Strict Airgap</div>
+            <div class="text-[11px] text-rose-300"><i class="fa-solid fa-ban mr-1"></i>Akses Mutasi Data: Blocked (Read-Only)</div>
+          </div>
+        </div>
+
+        <div class="card lg:col-span-2 flex flex-col h-[520px]">
+          <div class="p-4 border-b border-slate-800 flex items-center gap-2 flex-wrap">
+            <span class="dot bg-emerald-500 animate-ping"></span>
+            <span class="font-semibold text-slate-100 text-[13px]">DataOps Verified Copilot</span>
+            <span class="badge b-blue">Penyelaras Multi-Agen</span>
+            <span class="text-[11px] text-slate-500">Menjawab berdasarkan bukti telemetri &amp; regulasi resmi</span>
+            <div class="flex-1"></div>
+            <span class="badge b-slate" id="chat-mode">mode —</span>
+          </div>
+          <div id="chat-scroll" class="flex-1 overflow-y-auto p-4 space-y-3">
+            <div class="space-y-2" id="quick-prompts"></div>
+          </div>
+          <div class="p-3 border-t border-slate-800 flex gap-2">
+            <input id="chat-input" placeholder="Tanya kondisi pipeline, lock, DAG, TLS…" class="flex-1 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-200 text-[13px]">
+            <button id="chat-send" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[13px]"><i class="fa-solid fa-paper-plane mr-1"></i>Kirim</button>
+          </div>
+        </div>
+      </div>
     </section>
-    <section class="tab-panel" id="tab-incidents">
-      <h2>Incidents / Findings</h2>
-      <div class="sub">Finding lifecycle: open → acknowledged → remediating → resolved / accepted_risk</div>
-      <table><thead><tr><th>Finding</th><th>Control</th><th>Severity</th><th>Status</th><th>Reason</th><th>First seen</th></tr></thead>
-      <tbody id="incident-findings"></tbody></table>
-      <div class="empty" id="incident-empty" hidden>Tidak ada findings.</div>
+
+    <!-- ================= TAB 4 INCIDENTS ================= -->
+    <section class="panel" id="panel-incidents">
+      <div class="card p-5 mb-4">
+        <div class="flex items-start gap-3 flex-wrap">
+          <div class="flex-1 min-w-[280px]">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h2 class="font-semibold text-slate-100">Insiden &amp; Human-in-the-Loop</h2>
+              <span class="badge b-rose">Tingkat L5 Act Berizin</span>
+              <span class="badge b-slate"><i class="fa-solid fa-lock mr-1"></i>Audit Trail Immutability Enabled</span>
+            </div>
+            <p class="text-[12px] text-slate-500 mt-1">Remediasi otomatis tanpa persetujuan eksplisit <span class="text-rose-300 font-semibold">DILARANG</span>.</p>
+          </div>
+          <span class="badge b-amber" id="incidents-count">0 menunggu approval</span>
+        </div>
+      </div>
+      <div id="incident-cards" class="space-y-4 mb-4"></div>
+      <div class="card p-5">
+        <div class="flex items-center gap-2 mb-3">
+          <i class="fa-solid fa-clock-rotate-left text-slate-400"></i>
+          <h3 class="font-semibold text-slate-100 text-[13px]">Log Riwayat Audit (Immutable)</h3>
+          <div class="flex-1"></div>
+          <span class="text-[11px] text-slate-500" id="audit-count"></span>
+        </div>
+        <div class="overflow-x-auto">
+          <table>
+            <thead><tr><th>Waktu</th><th>Status</th><th>Aksi</th><th>Aktor / Approver</th><th>Target</th></tr></thead>
+            <tbody id="audit-rows"></tbody>
+          </table>
+        </div>
+      </div>
     </section>
-    <section class="tab-panel" id="tab-governance">
-      <h2>Governance</h2>
-      <div class="sub">Audit events (append-only) &amp; exceptions</div>
-      <table><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Outcome</th></tr></thead>
-      <tbody id="gov-audit"></tbody></table>
-      <div class="placeholder" style="margin-top:12px">Stub: exceptions &amp; approval flow — menyusul.</div>
+
+    <!-- ================= TAB 5 GOVERNANCE ================= -->
+    <section class="panel" id="panel-governance">
+      <div class="card p-5 mb-4">
+        <h2 class="font-semibold text-slate-100">Standar &amp; Repositori Pengetahuan Terkelola</h2>
+        <p class="text-[12px] text-slate-500 mt-1">Sumber otoritatif untuk rujukan aturan; dokumen diperlakukan sebagai data, bukan instruksi.</p>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5" id="gov-sources"></div>
+      <div class="card p-5">
+        <h3 class="font-semibold text-slate-100 text-[13px] mb-3">Protokol Keamanan &amp; Perlindungan Berlapis</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="inner p-4"><div class="flex items-center gap-2 mb-1"><i class="fa-solid fa-eye-slash text-emerald-400"></i><span class="text-[12px] font-semibold text-slate-100">Read-Only Default</span></div><p class="text-[11px] text-slate-400">Semua akun mulai tanpa hak tulis. Mutasi data diblokir di level API.</p></div>
+          <div class="inner p-4"><div class="flex items-center gap-2 mb-1"><i class="fa-solid fa-network-wired text-blue-400"></i><span class="text-[12px] font-semibold text-slate-100">Isolasi Tenant</span></div><p class="text-[11px] text-slate-400">Setiap query disaring <code class="chip">tenant_id</code>; akses lintas tenant ditolak &amp; tercatat.</p></div>
+          <div class="inner p-4"><div class="flex items-center gap-2 mb-1"><i class="fa-solid fa-filter text-amber-400"></i><span class="text-[12px] font-semibold text-slate-100">Minimisasi Paparan Data</span></div><p class="text-[11px] text-slate-400">Hanya metadata &amp; statistik telemetri tersimpan — tanpa data baris pelanggan.</p></div>
+        </div>
+      </div>
     </section>
-    <section class="tab-panel" id="tab-maturity">
-      <h2>Maturity</h2>
-      <div class="sub">Coverage &amp; tingkat integrasi (L1 Discover … L5 Act)</div>
-      <div class="placeholder">Stub: maturity per integration — menyusul.</div>
+
+    <!-- ================= TAB 6 MATURITY ================= -->
+    <section class="panel" id="panel-maturity">
+      <div class="card p-5 mb-4">
+        <h2 class="font-semibold text-slate-100">Kategori Strategi Integrasi</h2>
+        <p class="text-[12px] text-slate-500 mt-1">Peta tingkat kematangan operasi data dari discover sampai act berizin.</p>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-5" id="maturity-levels"></div>
+      <div class="card p-5">
+        <h3 class="font-semibold text-slate-100 text-[13px] mb-3">Roadmap Fase</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4" id="roadmap-cards"></div>
+      </div>
     </section>
   </main>
 </div>
 
+<!-- ===== TOAST ===== -->
+<div id="toasts" class="fixed bottom-4 right-4 z-50 space-y-2 w-[320px]"></div>
+
+<!-- ===== MODAL EVIDENCE ===== -->
+<div id="modal" hidden class="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm grid place-items-center p-4">
+  <div class="card w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+    <div class="p-5 border-b border-slate-800 flex items-center gap-3 flex-wrap">
+      <i class="fa-solid fa-file-shield text-blue-400"></i>
+      <h3 class="font-semibold text-slate-100 text-[13px]" id="modal-title">Bukti Telemetri</h3>
+      <span id="modal-badge"></span>
+      <div class="flex-1"></div>
+      <button id="modal-close" class="text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="p-5 space-y-3">
+      <p class="text-[12px] text-slate-300" id="modal-desc"></p>
+      <div class="text-[11px] text-slate-500" id="modal-meta"></div>
+      <pre class="mono inner p-3 overflow-auto max-h-[40vh]" id="modal-payload"></pre>
+      <div class="chip" id="modal-hash"></div>
+    </div>
+    <div class="p-4 border-t border-slate-800 flex justify-end">
+      <button id="modal-footer-close" class="px-4 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800 text-[12px] text-slate-300 hover:border-blue-500/40">Tutup</button>
+    </div>
+  </div>
+</div>
+
 <script>
-const $ = (s) => document.querySelector(s);
+/* =========================================================
+   AI DataOps Intelligence — dashboard (single file, no build)
+   Semua angka dari API nyata; data contoh WAJIB ber-badge "contoh".
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const api = (path, opts = {}) => fetch(path, {credentials: 'same-origin', ...opts})
   .then(async r => { if (r.status === 401) { showLogin(); throw new Error('unauthenticated'); } return r.json(); });
+const post = (p, body) => api(p, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body || {})});
 
-let TAB_LOADERS = {};
+/* ---------- persona ---------- */
+const PERSONAS = [
+  {id: 'all', label: 'Semua', domains: null},
+  {id: 'eng', label: 'Data Eng & DBA', domains: ['engineering', 'lineage', 'dba']},
+  {id: 'sre', label: 'SRE & Platform', domains: ['ops']},
+  {id: 'gov', label: 'Governance & FinOps', domains: ['security', 'governance']},
+];
+let persona = 'all';
+const personaDomains = () => (PERSONAS.find(p => p.id === persona) || PERSONAS[0]).domains;
 
+/* ---------- state ---------- */
+const S = {summary: null, assets: [], findings: [], results: [], evidence: [], audit: [], integrations: [], chat: null, filter: 'all', loaded: {}};
+
+/* ---------- toast ---------- */
+function toast(kind, msg) {
+  const map = {info: ['b-blue', 'fa-circle-info'], success: ['b-emerald', 'fa-circle-check'], error: ['b-rose', 'fa-circle-xmark'], warning: ['b-amber', 'fa-triangle-exclamation']};
+  const [cls, ic] = map[kind] || map.info;
+  const el = document.createElement('div');
+  el.className = 'card p-3 flex items-start gap-2 shadow-lg';
+  el.innerHTML = `<span class="badge ${cls}"><i class="fa-solid ${ic}"></i></span><span class="text-[12px] text-slate-200">${esc(msg)}</span>`;
+  $('#toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+/* ---------- modal ---------- */
+function openModal(title, badgeHtml, desc, meta, payload, hash) {
+  $('#modal-title').textContent = title;
+  $('#modal-badge').innerHTML = badgeHtml || '';
+  $('#modal-desc').textContent = desc || '';
+  $('#modal-meta').textContent = meta || '';
+  $('#modal-payload').textContent = payload == null ? '(tidak ada payload tersimpan)' : JSON.stringify(payload, null, 2);
+  $('#modal-hash').textContent = hash || '';
+  $('#modal').hidden = false;
+}
+['#modal-close', '#modal-footer-close'].forEach(s => $(s).addEventListener('click', () => $('#modal').hidden = true));
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') $('#modal').hidden = true; });
+
+async function sha256(text) {
+  try {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return 'sha256:' + Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+  } catch (e) { return 'hash: tidak tersedia (context tidak aman)'; }
+}
+
+/* ---------- status helpers ---------- */
+const STATUS_BADGE = {pass: 'b-emerald', fail: 'b-rose', unknown: 'b-amber', not_applicable: 'b-slate'};
+const STATUS_ID = {pass: 'Pass', fail: 'Fail', unknown: 'Unknown', not_applicable: 'N/A'};
+const badge = (cls, txt) => `<span class="badge ${cls}">${esc(txt)}</span>`;
+const statusBadge = st => badge(STATUS_BADGE[st] || 'b-slate', STATUS_ID[st] || st);
+const DEMO = '<span class="badge b-demo">contoh</span>';
+const fmtT = t => (t || '').replace('T', ' ').slice(0, 19);
+const shortId = id => (id || '').slice(0, 8);
+const agentOf = dom => ({ops: ['Agen SRE', 'cyan', 'fa-server'], engineering: ['Agen Data Engineer', 'purple', 'fa-code-branch'],
+  lineage: ['Agen Data Engineer', 'purple', 'fa-code-branch'], dba: ['Agen DBA', 'amber', 'fa-database'],
+  security: ['Agen Compliance & FinOps', 'emerald', 'fa-scale-balanced'],
+  governance: ['Agen Compliance & FinOps', 'emerald', 'fa-scale-balanced']}[dom] || ['Agen SRE', 'cyan', 'fa-server']);
+
+/* =========================================================
+   KPI BAR
+   ========================================================= */
+function renderKpi() {
+  const s = S.summary || {};
+  const re = s.rule_engine || {};
+  const pl = s.pipelines || {};
+  const hasAssess = !!re.has_assessment;
+  const rate = re.pass_rate;
+  const deg = pl.open_findings || 0;
+
+  const cards = [
+    {icon: 'fa-calculator', color: 'emerald', label: 'Status Rule Engine',
+     value: hasAssess ? (rate == null ? '—' : rate + '%') : '—',
+     sub: hasAssess ? `<span class="text-emerald-300">${re.pass || 0} Pass</span>` : `<span class="text-slate-500">belum ada assessment</span>`,
+     caption: hasAssess ? `${re.fail || 0} Fail • ${re.unknown || 0} Unknown • ${re.not_applicable || 0} N/A`
+                        : 'Jalankan assessment setelah agent terhubung',
+     badge: hasAssess ? '' : DEMO_NOT_APPLICABLE},
+    {icon: 'fa-network-wired', color: 'blue', label: 'Active Pipelines',
+     value: pl.assets || 0,
+     sub: deg ? `<span class="text-rose-300">${deg} Degradasi</span>` : `<span class="text-emerald-300">0 Degradasi</span>`,
+     caption: (pl.services && pl.services.length) ? pl.services.join(' • ') : 'Belum ada aset ter-discovery (agent belum push)',
+     badge: ''},
+    {icon: 'fa-users-gear', color: 'purple', label: 'Spesialis AI Aktif',
+     value: ((s.agents && s.agents.specialists) || []).length + ' Agen',
+     sub: `<span class="text-blue-300">Supervisor ${(s.agents && s.agents.supervisor) || 'P0'}</span>`,
+     caption: ((s.agents && s.agents.specialists) || []).join(', ') || '—',
+     badge: ''},
+    {icon: 'fa-stairs', color: 'amber', label: 'Maturitas Operasi',
+     value: 'Tingkat ' + ((s.maturity && s.maturity.level) || '—'),
+     sub: `<span class="text-amber-300">${(s.maturity && s.maturity.stage) || '—'}</span>`,
+     caption: 'Menuju ' + ((s.maturity && s.maturity.next) || '—'),
+     badge: ''},
+  ];
+  const colors = {emerald: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25', blue: 'bg-blue-500/15 text-blue-300 border-blue-500/25',
+                  purple: 'bg-purple-500/15 text-purple-300 border-purple-500/25', amber: 'bg-amber-500/15 text-amber-300 border-amber-500/25'};
+  $('#kpi-bar').innerHTML = cards.map(c => `
+    <div class="card p-4 flex items-start gap-3">
+      <div class="flex-1 min-w-0">
+        <div class="lbl">${esc(c.label)}</div>
+        <div class="text-2xl font-bold text-slate-100 mt-1">${esc(c.value)}</div>
+        <div class="text-[12px] mt-0.5">${c.sub}</div>
+        <div class="text-[11px] text-slate-500 mt-1 truncate" title="${esc(c.caption)}">${esc(c.caption)}</div>
+      </div>
+      <div class="w-10 h-10 rounded-xl border grid place-items-center shrink-0 ${colors[c.color]}"><i class="fa-solid ${c.icon}"></i></div>
+    </div>`).join('');
+  $('#nav-cnt-engine').textContent = (re.total || 0) + ' kontrol';
+  $('#nav-cnt-incidents').textContent = (S.findings.filter(f => ['open', 'acknowledged', 'remediating'].includes(f.status)).length) + ' approval';
+}
+const DEMO_NOT_APPLICABLE = '';
+
+/* =========================================================
+   TAB 1 — TOPOLOGY
+   ========================================================= */
+const NODE_META = {
+  postgresql: {icon: 'fa-database', color: 'blue', kind: 'PostgreSQL Core'},
+  'apache-airflow': {icon: 'fa-wind', color: 'cyan', kind: 'Apache Airflow'},
+  lakehouse: {icon: 'fa-server', color: 'indigo', kind: 'Staging Lakehouse'},
+  bimart: {icon: 'fa-chart-pie', color: 'emerald', kind: 'BI Data Mart'},
+};
+let nodeDetail = {};
+
+function buildNodes() {
+  const real = S.assets.map(a => ({
+    id: a.native_id, asset_id: a.asset_id, demo: false,
+    meta: NODE_META[a.provider] || {icon: 'fa-cube', color: 'slate', kind: a.provider},
+    name: a.native_id, sub: `${a.provider}/${a.service}`, env: a.environment,
+    ev: S.evidence.filter(e => e.asset_id === a.asset_id).length,
+    findings: S.findings.filter(f => f.asset_id === a.asset_id && ['open', 'acknowledged', 'remediating'].includes(f.status)).length,
+  }));
+  const haveLake = real.some(n => n.id === 'staging-lakehouse');
+  const haveBi = real.some(n => n.id === 'bi-data-mart');
+  const demoNodes = [];
+  if (!haveLake) demoNodes.push({id: 'staging-lakehouse', demo: true, meta: NODE_META.lakehouse, name: 'Staging Lakehouse', sub: 'belum ter-discovery', env: '—', ev: 0, findings: 0});
+  if (!haveBi) demoNodes.push({id: 'bi-data-mart', demo: true, meta: NODE_META.bimart, name: 'BI Data Mart', sub: 'belum ter-discovery', env: '—', ev: 0, findings: 0});
+  return real.concat(demoNodes);
+}
+
+function nodeStatus(n) {
+  if (n.demo) return {cls: 'b-slate', border: 'border-slate-800', label: 'Belum ada data'};
+  if (n.findings > 0) return {cls: 'b-rose', border: 'border-rose-500/50', label: 'Degradasi'};
+  if (n.ev === 0) return {cls: 'b-amber', border: 'border-amber-500/40', label: 'Bukti minim'};
+  return {cls: 'b-emerald', border: 'border-emerald-500/30', label: 'Normal'};
+}
+
+function renderTopology() {
+  const nodes = buildNodes();
+  const cmap = {blue: 'bg-blue-500/15 text-blue-300 border-blue-500/25', cyan: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/25',
+                indigo: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/25', emerald: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25',
+                slate: 'bg-slate-700/40 text-slate-300 border-slate-700'};
+  $('#topo-flow').innerHTML = `<div class="grid grid-cols-1 md:grid-cols-4 gap-3">` + nodes.map((n, i) => {
+    const st = nodeStatus(n);
+    return `<div class="card border ${st.border} bg-slate-950/70 p-3 cursor-pointer hover:border-blue-500/50" data-node="${esc(n.id)}" id="node-${i}">
+      <div class="flex items-center gap-2">
+        <span class="lbl font-mono">L2 OBSERVE</span><div class="flex-1"></div>
+        <span class="dot ${n.demo ? 'bg-slate-600' : (n.findings ? 'bg-rose-500' : (n.ev ? 'bg-emerald-500' : 'bg-amber-400'))}"></span>
+      </div>
+      <div class="flex items-center gap-2 mt-3">
+        <div class="w-9 h-9 rounded-lg border grid place-items-center ${cmap[n.meta.color]}"><i class="fa-solid ${n.meta.icon}"></i></div>
+        <div class="min-w-0">
+          <div class="text-[13px] font-semibold text-slate-100 truncate">${esc(n.name)}</div>
+          <div class="chip truncate">${esc(n.id)}</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 mt-3 flex-wrap">
+        ${badge(st.cls, st.label)}${n.demo ? DEMO : ''}
+      </div>
+      <div class="grid grid-cols-2 gap-2 mt-3 text-[11px]">
+        <div class="inner px-2 py-1"><span class="text-slate-500">Evidence</span> <span class="text-slate-200 font-semibold">${n.ev}</span></div>
+        <div class="inner px-2 py-1"><span class="text-slate-500">Temuan</span> <span class="${n.findings ? 'text-rose-300' : 'text-slate-200'} font-semibold">${n.findings}</span></div>
+      </div>
+    </div>`;
+  }).join('') + `</div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-[11px] text-slate-500">
+    <div class="text-center"><i class="fa-solid fa-arrow-right text-slate-600 mr-1"></i>Extract &amp; Load (CDC)</div>
+    <div class="text-center"><i class="fa-solid fa-arrow-right text-slate-600 mr-1"></i>Transform Pipeline (SQL Lock)</div>
+    <div class="text-center"><i class="fa-solid fa-arrow-right text-slate-600 mr-1"></i>Semantic Catalog Sync</div>
+  </div>`;
+  nodeDetail = {};
+  nodes.forEach((n, i) => { nodeDetail[n.id] = n; });
+  $$('#topo-flow [data-node]').forEach(el => el.addEventListener('click', () => openNodeDrawer(el.dataset.node)));
+
+  // panel kanonis
+  const newest = S.evidence[0];
+  const canonical = newest ? {eventTime: newest.collected_at, producer: 'dataops-agent/0.1.0',
+      job: {namespace: 'dataops.pilot', name: newest.evidence_type},
+      inputs: S.assets.filter(a => a.asset_id === newest.asset_id).map(a => ({namespace: a.provider, name: a.native_id})),
+      runFacets: {source_ref: newest.source_ref, freshness: newest.freshness}}
+    : {eventTime: null, producer: 'dataops-agent/0.1.0', job: {namespace: 'dataops.pilot', name: 'belum-ada-evidence'},
+       inputs: [], runFacets: {source_ref: null, freshness: 'missing'}};
+  $('#canonical-json').textContent = JSON.stringify(canonical, null, 2);
+  $('#canonical-note').innerHTML = newest
+    ? `Metadata ternormalisasi dari evidence <span class="chip">${esc(newest.source_ref)}</span> (koleksi terbaru).`
+    : 'Belum ada evidence tersimpan — <b>hubungkan agent</b> untuk mengisi metadata kanonis. Struktur di atas hanya skema kontrak.';
+
+  // telemetri
+  const rows = S.evidence.slice(0, 5);
+  if (rows.length) {
+    $('#telemetry-list').innerHTML = rows.map(e => {
+      const dotc = e.freshness === 'fresh' ? 'bg-emerald-500' : (e.freshness === 'stale' ? 'bg-amber-400' : 'bg-rose-500');
+      const val = (e.payload && (e.payload.max_lock_duration_s ?? e.payload.dag_run_success_rate ?? null));
+      return `<div class="inner p-3 flex items-center gap-3">
+        <span class="dot ${dotc}"></span>
+        <div class="min-w-0 flex-1"><div class="text-[12px] text-slate-200 truncate">${esc(e.evidence_type)}</div>
+        <div class="chip truncate">${esc(e.source_ref)}</div></div>
+        <div class="text-right text-[11px] text-slate-400">${val == null ? fmtT(e.collected_at) : `<span class="text-slate-200 font-semibold">${esc(val)}</span><br>${fmtT(e.collected_at)}`}</div>
+      </div>`;
+    }).join('');
+  } else {
+    $('#telemetry-list').innerHTML = `<div class="inner p-4 text-[12px] text-slate-500">Belum ada evidence telemetri — hubungkan agent. ${DEMO}</div>
+      <div class="inner p-3 flex items-center gap-3 opacity-60"><span class="dot bg-emerald-500"></span>
+      <div class="flex-1"><div class="text-[12px] text-slate-300">pg_stat_activity</div><div class="chip">contoh:postgresql/pg-main</div></div>
+      <div class="text-[11px] text-slate-500">42s</div></div>
+      <div class="inner p-3 flex items-center gap-3 opacity-60"><span class="dot bg-amber-400"></span>
+      <div class="flex-1"><div class="text-[12px] text-slate-300">airflow dag metrics</div><div class="chip">contoh:apache-airflow/af-1</div></div>
+      <div class="text-[11px] text-slate-500">0.91</div></div>`;
+  }
+}
+
+function openNodeDrawer(nodeId) {
+  const n = nodeDetail[nodeId];
+  if (!n) return;
+  const st = nodeStatus(n);
+  const evRefs = S.evidence.filter(e => e.asset_id === n.asset_id).map(e => e.source_ref);
+  const f = S.findings.filter(x => x.asset_id === n.asset_id && ['open', 'acknowledged', 'remediating'].includes(x.status));
+  $('#node-drawer').hidden = false;
+  $('#node-drawer').innerHTML = `
+    <div class="flex items-center gap-2 flex-wrap">
+      <i class="fa-solid ${n.meta.icon} text-blue-400"></i>
+      <span class="font-semibold text-slate-100 text-[13px]">${esc(n.name)}</span>
+      ${badge(st.cls, st.label)}${n.demo ? DEMO : ''}
+      <div class="flex-1"></div>
+      <button id="drawer-close" class="text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 text-[12px]">
+      <div><div class="lbl mb-1">ID Evidence</div>
+        ${evRefs.length ? evRefs.map(r => `<div class="chip mb-1">${esc(r)}</div>`).join('') : '<span class="text-slate-500">tidak ada evidence — penyebab tidak dapat diverifikasi dari telemetri</span>'}
+      </div>
+      <div><div class="lbl mb-1">Deskripsi penyebab</div>
+        <div class="text-slate-300">${f.length ? esc(f.map(x => `${x.control_id}: ${x.reason || '-'}`).join(' | ')) : (n.demo ? 'Node contoh — belum ada data nyata untuk diverifikasi.' : 'Tidak ada temuan aktif pada node ini berdasarkan assessment terakhir.')}</div>
+      </div>
+    </div>
+    <div class="flex gap-2 mt-4 flex-wrap">
+      <button id="drawer-diag" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[12px] font-semibold"><i class="fa-solid fa-stethoscope mr-1"></i>Minta Diagnosis AI Supervisor</button>
+      <button id="drawer-rem" class="px-3 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-200 text-[12px] hover:bg-rose-500/25"><i class="fa-solid fa-hand mr-1"></i>Buka Remediasi (Human-in-the-Loop)</button>
+    </div>`;
+  $('#drawer-close').onclick = () => { $('#node-drawer').hidden = true; };
+  $('#drawer-diag').onclick = () => {
+    switchTab('agents');
+    askChat(`Diagnosis untuk node ${n.name} (${n.id}): apa penyebab dan langkah verifikasi?`);
+  };
+  $('#drawer-rem').onclick = () => { switchTab('incidents'); toast('info', 'Buka tab Insiden — pilih insiden untuk approval HITL.'); };
+}
+
+/* =========================================================
+   TAB 2 — RULE ENGINE
+   ========================================================= */
+function visibleResults() {
+  const doms = personaDomains();
+  return S.results.filter(r => !doms || doms.includes(domainOf(r.control_id)));
+}
+function domainOf(cid) {
+  const r = S.results.find(x => x.control_id === cid);
+  if (r && r.domain) return r.domain;
+  return RULE_DOMAIN_HINT[cid] || 'ops';
+}
+const RULE_DOMAIN_HINT = {'RULE-ENG-001': 'engineering', 'RULE-DBA-003': 'dba', 'RULE-SEC-004': 'security',
+  'RULE-GOV-009': 'governance', 'RULE-OPR-001': 'ops', 'RULE-OPR-002': 'ops', 'RULE-LIN-002': 'lineage'};
+
+function renderEngine() {
+  const all = visibleResults();
+  const counts = {all: all.length, pass: 0, fail: 0, unknown: 0, not_applicable: 0};
+  all.forEach(r => counts[r.status] != null && counts[r.status]++);
+  const defs = [['all', 'Semua'], ['pass', 'Pass'], ['fail', 'Fail'], ['unknown', 'Unknown'], ['not_applicable', 'Not Applicable']];
+  $('#engine-filters').innerHTML = defs.map(([k, l]) =>
+    `<button class="pillf ${S.filter === k ? 'on' : ''}" data-filter="${k}">${l} <span class="opacity-70">(${counts[k] || 0})</span></button>`).join('');
+  $$('#engine-filters [data-filter]').forEach(b => b.onclick = () => { S.filter = b.dataset.filter; renderEngine(); });
+
+  const rows = S.filter === 'all' ? all : all.filter(r => r.status === S.filter);
+  if (!S.results.length) {
+    $('#engine-rows').innerHTML = `<tr><td colspan="6" class="text-[12px] text-slate-500 py-6 text-center">
+      Belum ada assessment — hubungkan agent lalu jalankan assessment (POST /api/assessments/run).<br>
+      <span class="text-slate-600">Tanpa bukti telemetri, engine tidak menampilkan angka apa pun.</span></td></tr>`;
+  } else if (!rows.length) {
+    $('#engine-rows').innerHTML = `<tr><td colspan="6" class="text-[12px] text-slate-500 py-6 text-center">Tidak ada kontrol dengan status ini pada persona terpilih.</td></tr>`;
+  } else {
+    $('#engine-rows').innerHTML = rows.map(r => `<tr>
+      <td><div class="chip text-blue-300">${esc(r.control_id)}</div>
+        <div class="text-[11px] text-slate-500 mt-1 max-w-[320px]">${esc(r.statement || '—')}</div></td>
+      <td><span class="chip">${esc((S.assets[0] && S.assets[0].native_id) || 'tenant:' + (S.summary && S.summary.tenant_id) || '—')}</span></td>
+      <td>${statusBadge(r.status)}</td>
+      <td>${(r.evidence_refs || []).length ? (r.evidence_refs).map(e => `<div class="chip mb-1">${esc(e)}</div>`).join('')
+            : '<span class="text-[11px] text-amber-300">tidak ada bukti telemetri</span>'}
+        <div class="text-[11px] text-slate-500 mt-1 max-w-[260px]">${esc(r.reason || '')}</div></td>
+      <td><span class="badge b-blue">${esc(r.knowledge_ref || '—')}</span></td>
+      <td><button class="px-2 py-1 rounded-lg bg-slate-950/70 border border-slate-800 text-[11px] text-slate-300 hover:border-blue-500/40" data-ev="${esc(r.result_id)}"><i class="fa-solid fa-file-shield mr-1"></i>Lihat Bukti</button></td>
+    </tr>`).join('');
+  }
+  $$('#engine-rows [data-ev]').forEach(b => b.onclick = () => showEvidence(b.dataset.ev));
+
+  const last = (S.summary && S.summary.rule_engine) || {};
+  $('#engine-latency').textContent = 'latency engine: ' + (last.evaluated_at ? `assessment selesai ${fmtT(last.evaluated_at)}` : 'belum ada run') +
+    (last.controls_active ? ` • ${last.controls_active} kontrol aktif` : '');
+}
+
+async function showEvidence(resultId) {
+  const r = S.results.find(x => x.result_id === resultId);
+  if (!r) return;
+  const refs = r.evidence_refs || [];
+  const ev = S.evidence.find(e => refs.includes(e.source_ref));
+  const payload = ev ? ev.payload : null;
+  const txt = JSON.stringify({control_id: r.control_id, status: r.status, reason: r.reason, evidence_refs: refs});
+  const hash = await sha256(txt);
+  openModal(`Bukti Telemetri: ${r.control_id}`, statusBadge(r.status),
+    r.reason || 'Tidak ada uraian dari engine.',
+    `entitas target: ${(S.assets[0] && S.assets[0].native_id) || '—'} • ref bukti: ${refs.join(', ') || 'tidak ada'} • dievaluasi: ${fmtT(r.evaluated_at)}` +
+    (ev ? ` • dikumpulkan: ${fmtT(ev.collected_at)} • freshness: ${ev.freshness}` : ' • DETAIL EVIDENCE TIDAK TERSIMPAN'),
+    payload, hash + `  (hash bukti hasil evaluasi ${shortId(r.result_id)})`);
+}
+
+/* =========================================================
+   TAB 3 — AGENTS + CHAT
+   ========================================================= */
+const AGENTS = [
+  {name: 'Agen SRE', role: 'SRE', dom: 'ops', icon: 'fa-server', color: 'cyan', desc: 'Kesehatan runtime, DAG Airflow, SLA task.'},
+  {name: 'Agen Data Engineer', role: 'Data Engineer', dom: 'engineering', icon: 'fa-code-branch', color: 'purple', desc: 'Pipeline ETL, lineage OpenLineage, kualitas transformasi.'},
+  {name: 'Agen DBA', role: 'DBA', dom: 'dba', icon: 'fa-database', color: 'amber', desc: 'Lock, bloat/dead tuple, vacuum, kapasitas PostgreSQL.'},
+  {name: 'Agen Compliance & FinOps', role: 'Compliance & FinOps', dom: 'security', icon: 'fa-scale-balanced', color: 'emerald', desc: 'Kepatuhan kontrol, TLS, retensi audit, biaya.'},
+];
+const cmapTxt = {cyan: 'text-cyan-400', purple: 'text-purple-400', amber: 'text-amber-400', emerald: 'text-emerald-400', blue: 'text-blue-400'};
+
+function renderAgents() {
+  $('#agent-list').innerHTML = AGENTS.map(a => {
+    const on = !personaDomains() || personaDomains().includes(a.dom) ||
+      (a.dom === 'security' && personaDomains().includes('governance'));
+    return `<div class="inner p-3 cursor-pointer hover:border-blue-500/40" data-agent="${a.dom}">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid ${a.icon} ${cmapTxt[a.color]}"></i>
+        <span class="text-[12px] font-semibold text-slate-100">${a.name}</span>
+        <div class="flex-1"></div><span class="dot ${on ? 'bg-emerald-500' : 'bg-slate-600'}"></span>
+      </div>
+      <div class="text-[11px] text-slate-500 mt-1">${esc(a.desc)}</div>
+    </div>`;
+  }).join('');
+  $$('#agent-list [data-agent]').forEach(el => el.onclick = () => {
+    const a = AGENTS.find(x => x.dom === el.dataset.agent);
+    toast('info', `${a.name} dipilih — supervisor akan menyertakan konteks domain ini.`);
+    askChat(`Apa kondisi domain ${a.role} saat ini?`);
+  });
+
+  const qs = ['Ringkas temuan aktif terbaru dan buktinya', 'Ada masalah lock atau dead tuple PostgreSQL?', 'Bagaimana status compliance Airflow & TLS?'];
+  $('#quick-prompts').innerHTML = qs.map(q =>
+    `<button class="px-3 py-1.5 rounded-full bg-slate-950/70 border border-slate-800 text-[11px] text-slate-300 hover:border-blue-500/40 text-left" data-q="${esc(q)}">${esc(q)}</button>`).join('');
+  $$('#quick-prompts [data-q]').forEach(b => b.onclick = () => askChat(b.dataset.q));
+}
+
+function bubbleUser(text) {
+  const el = document.createElement('div');
+  el.className = 'flex justify-end';
+  el.innerHTML = `<div class="max-w-[85%] bg-blue-600 text-white rounded-2xl rounded-br-sm px-3 py-2 text-[12px]">${esc(text)}</div>`;
+  $('#chat-scroll').appendChild(el);
+  $('#chat-scroll').scrollTop = $('#chat-scroll').scrollHeight;
+}
+
+function bubbleReply(d, question) {
+  const el = document.createElement('div');
+  el.className = 'max-w-[92%]';
+  const quotes = (d.agents || []).map(a => {
+    const info = AGENTS.find(x => x.role === a.role) || AGENTS[0];
+    return `<div class="border-l-2 pl-3 py-1 bg-slate-900/70 rounded-r" style="border-color:currentColor">
+      <div class="text-[11px] ${cmapTxt[info.color]} font-semibold">${esc(a.name)}</div>
+      <div class="text-[12px] text-slate-300">${esc(a.text)}</div></div>`;
+  }).join('');
+  el.innerHTML = `
+    <div class="inner p-3 space-y-2">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="font-semibold text-[12px] text-slate-100">Sintesis DataOps Supervisor (Berdasarkan ${(d.agents || []).length} Agen)</span>
+        <span class="badge b-emerald font-mono">${(d.evidence_refs || []).length} bukti</span>
+        <span class="badge ${d.llm ? 'b-blue' : 'b-slate'}">${d.llm ? 'LLM' : 'deterministik (stub, tanpa LLM)'}</span>
+      </div>
+      <div class="space-y-1">${(d.claims || []).map(c => `<p class="text-[12px] text-slate-200">• ${esc(c)}</p>`).join('')}</div>
+      ${quotes}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+        <div><div class="lbl mb-1">Bukti (evidence refs)</div>
+          ${(d.evidence_refs || []).length ? d.evidence_refs.map(r => `<span class="chip mr-1">${esc(r)}</span>`).join('') : '<span class="text-[11px] text-amber-300">tidak ada — jawaban tidak bersandar telemetri</span>'}</div>
+        <div><div class="lbl mb-1">Rujukan pengetahuan</div>
+          ${(d.knowledge_refs || []).length ? d.knowledge_refs.map(r => `<span class="badge b-blue mr-1">${esc(r)}</span>`).join('') : '<span class="text-[11px] text-slate-500">—</span>'}</div>
+      </div>
+      <div><div class="lbl mb-1">Ketidakpastian</div><div class="text-[12px] text-amber-200">${esc(d.uncertainty)}</div></div>
+      <div><div class="lbl mb-1">Risiko</div>${(d.risks || []).map(r => `<div class="text-[12px] text-rose-200">• ${esc(r)}</div>`).join('')}</div>
+      <div><div class="lbl mb-1">Langkah verifikasi</div>${(d.verification_steps || []).map(r => `<div class="text-[12px] text-slate-300">• ${esc(r)}</div>`).join('')}</div>
+      <div class="flex gap-2 pt-1">
+        <button class="px-3 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-200 text-[11px] hover:bg-rose-500/25" data-goto="incidents"><i class="fa-solid fa-hand mr-1"></i>Review &amp; Setujui</button>
+      </div>
+    </div>`;
+  $('#chat-scroll').appendChild(el);
+  const b = el.querySelector('[data-goto]');
+  if (b) b.onclick = () => { switchTab('incidents'); toast('info', 'Pilih insiden untuk approval HITL.'); };
+  $('#chat-scroll').scrollTop = $('#chat-scroll').scrollHeight;
+}
+
+async function askChat(text) {
+  if (!text || !text.trim()) return;
+  bubbleUser(text);
+  try {
+    const d = await post('/api/chat', {message: text, persona});
+    S.chat = d;
+    $('#chat-mode').textContent = 'mode: ' + d.mode;
+    bubbleReply(d, text);
+  } catch (e) {
+    if (String(e.message) !== 'unauthenticated') toast('error', 'Chat gagal: ' + e.message);
+  }
+}
+$('#chat-send').onclick = () => { const v = $('#chat-input').value; $('#chat-input').value = ''; askChat(v); };
+$('#chat-input').addEventListener('keydown', e => { if (e.key === 'Enter') { const v = e.target.value; e.target.value = ''; askChat(v); } });
+
+/* =========================================================
+   TAB 4 — INCIDENTS + AUDIT
+   ========================================================= */
+const DRY_RUN = {
+  'RULE-DBA-003': ['ANALYZE VERBOSE <table>', 'VACUUM (ANALYZE, VERBOSE) <table>', 'SELECT n_dead_tup, n_live_tup FROM pg_stat_user_tables'],
+  'RULE-ENG-001': ['SELECT pid, now()-xact_start AS age, query FROM pg_stat_activity WHERE state<>\'idle\'', 'SELECT pg_cancel_backend(<pid>)  -- hanya setelah approval'],
+  'RULE-SEC-004': ['SHOW ssl;', 'SELECT ssl, version FROM pg_stat_ssl', 'usulkan: ubah postgresql.conf ssl=on + reload (perlu change window)'],
+  'RULE-GOV-009': ['SELECT last_value FROM audit_purge_seq', 'catasi retensi audit ke knowledge base'],
+  'RULE-OPR-001': ['airflow dags list-runs -d <dag_id> --state failed', 'airflow tasks clear <dag_id> --only-failed'],
+  'RULE-OPR-002': ['airflow tasks list <dag_id> --tree', 'naikkan SLA atau optimasi task'],
+  'RULE-LIN-002': ['curl /api/v1/lineage/events -d <payload>', 'lengkapi facet run/task/data pada producer'],
+};
+function remediations(controlId) { return DRY_RUN[controlId] || ['(belum ada rencana remediasi terdaftar untuk rule ini)']; }
+
+function visibleFindings() {
+  const doms = personaDomains();
+  return S.findings.filter(f => !doms || doms.includes(domainOf(f.control_id)));
+}
+function renderIncidents() {
+  const fs = visibleFindings().filter(f => ['open', 'acknowledged', 'remediating'].includes(f.status));
+  $('#incidents-count').textContent = fs.length + ' menunggu approval';
+  if (!fs.length) {
+    $('#incident-cards').innerHTML = `<div class="card p-6 text-[12px] text-slate-500 text-center">
+      Belum ada insiden aktif${S.findings.length ? ' untuk persona terpilih' : ''} — tidak ada temuan terbuka dari assessment terakhir.
+      <div class="text-slate-600 mt-1">Insiden muncul hanya bila engine deterministik menemukan pelanggaran dengan bukti telemetri.</div></div>`;
+  } else {
+    $('#incident-cards').innerHTML = fs.map(f => {
+      const a = agentOf(domainOf(f.control_id));
+      const impact = {high: 'Berdampak ke pipeline downstream & SLA tim konsumen data', medium: 'Berdampak ke operasi rutin tim terkait', low: 'Paparan terbatas, monitoring lanjutan'}[f.severity] || 'Dampak belum dinilai';
+      const steps = remediations(f.control_id);
+      return `<div class="card border border-rose-500/40 bg-slate-950/80 p-5">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="chip text-rose-300">INC-${esc(shortId(f.finding_id))}</span>
+          <span class="font-semibold text-slate-100 text-[13px]">${esc(f.control_id)} — ${esc((f.reason || '').slice(0, 90))}</span>
+          <div class="flex-1"></div>
+          <span class="badge b-amber"><i class="fa-solid fa-hourglass-half mr-1"></i>Menunggu Approval</span>
+        </div>
+        <div class="text-[11px] text-slate-500 mt-1">Terakhir terlihat ${fmtT(f.last_seen_at)} • target asset <span class="chip">${esc((S.assets.find(a => a.asset_id === f.asset_id) || {}).native_id || f.asset_id)}</span> • severity <span class="text-rose-300">${esc(f.severity)}</span></div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+          <div class="inner p-3"><div class="lbl mb-1">Bukti Telemetri</div>
+            ${(f.evidence_refs || []).length ? f.evidence_refs.map(r => `<div class="mono text-rose-300 text-[11px]">${esc(r)}</div>`).join('') : '<div class="text-[11px] text-amber-300">tidak ada bukti tersimpan</div>'}
+            <div class="text-[11px] text-slate-500 mt-1">Assessment: <span class="chip">${esc(shortId(f.assessment_id))}</span></div></div>
+          <div class="inner p-3"><div class="lbl mb-1">Dampak Lintas Tim</div>
+            <div class="text-[11px] text-amber-300">${esc(impact)}</div>
+            <div class="text-[11px] text-slate-500 mt-1">Penanggung jawab: ${esc(a[0])}</div></div>
+          <div class="inner p-3"><div class="lbl mb-1">Remediasi Disarankan</div>
+            <div class="text-[11px] text-emerald-300">Jalankan perbaikan terkendali di bawah approval manusia.</div>
+            <code class="chip mt-1 inline-block">${esc(steps[steps.length - 1])}</code></div>
+        </div>
+        <div class="inner p-3 mt-3">
+          <div class="flex items-center gap-2 mb-2"><span class="lbl">Dry-Run Command Plan</span><span class="badge b-emerald"><i class="fa-solid fa-shield mr-1"></i>Zero Destructive DDL</span></div>
+          <pre class="mono">${steps.map((s, i) => `${i + 1}. ${esc(s)}`).join('\n')}</pre>
+        </div>
+        <div class="flex items-center gap-3 mt-3 flex-wrap">
+          <span class="text-[11px] text-slate-400">Otorisasi oleh: <span class="text-slate-200 font-semibold">Teknisi SRE / DBA On-Duty</span></span>
+          <div class="flex-1"></div>
+          <button class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800 text-[12px] text-slate-300 hover:border-rose-500/40" data-rej="${esc(f.finding_id)}">Tolak</button>
+          <button class="px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[12px] font-semibold hover:bg-emerald-500/30" data-app="${esc(f.finding_id)}"><i class="fa-solid fa-hand-holding-heart mr-1"></i>Setujui &amp; Eksekusi Remediasi (L5 Act)</button>
+        </div>
+      </div>`;
+    }).join('');
+    $$('#incident-cards [data-app]').forEach(b => b.onclick = () => decide(b.dataset.app, 'approved'));
+    $$('#incident-cards [data-rej]').forEach(b => b.onclick = () => decide(b.dataset.rej, 'rejected'));
+  }
+
+  const audit = S.audit;
+  $('#audit-count').textContent = audit.length + ' event';
+  $('#audit-rows').innerHTML = audit.length ? audit.slice(0, 25).map(e => {
+    const st = e.outcome === 'allow' ? ['b-emerald', 'SUKSES'] : e.outcome === 'deny' ? ['b-rose', 'DITOLAK'] : ['b-amber', 'ERROR'];
+    return `<tr><td class="mono text-[11px]">${esc(fmtT(e.timestamp))}</td><td>${badge(st[0], st[1])}</td>
+      <td><span class="chip">${esc(e.action)}</span></td><td class="text-[12px]">${esc(e.actor)}</td><td class="mono text-[11px] text-slate-400">${esc(e.target || '—')}</td></tr>`;
+  }).join('') : `<tr><td colspan="5" class="text-[12px] text-slate-500 py-4 text-center">Belum ada audit event.</td></tr>`;
+}
+
+async function decide(fid, decision) {
+  try {
+    const r = await post('/api/remediation/decision', {finding_id: fid, decision});
+    if (r.code === 'not_found') { toast('error', 'Insiden tidak ditemukan di tenant ini.'); return; }
+    toast(decision === 'approved' ? 'success' : 'warning',
+      decision === 'approved'
+        ? 'MVP recommendation-only — eksekusi L5 belum diaktifkan (keputusan tercatat di audit).'
+        : 'Penolakan tercatat di audit trail.');
+    await loadData(['audit']);
+    renderIncidents();
+  } catch (e) {
+    if (String(e.message) !== 'unauthenticated') toast('error', 'Gagal mencatat keputusan: ' + e.message);
+  }
+}
+
+/* =========================================================
+   TAB 5 — GOVERNANCE
+   ========================================================= */
+function renderGovernance() {
+  const integ = S.integrations || [];
+  const ctrl = (S.summary && S.summary.rule_engine && S.summary.rule_engine.controls_active) || 0;
+  const cards = [
+    {icon: 'fa-globe', color: 'blue', name: 'Standar Global', desc: 'NIST CSF & Privacy Framework sebagai dasar kontrol kepatuhan.',
+     meta: `${ctrl} Kontrol Aktif`},
+    {icon: 'fa-cloud', color: 'cyan', name: 'Cloud Framework', desc: 'Adapter cloud provider (P2) — kerangka pemetaan layanan.',
+     meta: `${integ.length} adapter terdaftar`},
+    {icon: 'fa-code-fork', color: 'purple', name: 'OpenLineage', desc: 'Spesifikasi lineage untuk facets run/task/data.',
+     meta: 'Spec v1.1.0 Parser'},
+    {icon: 'fa-building-shield', color: 'emerald', name: 'Policy Internal', desc: 'Kebijakan retensi audit & klasifikasi data korporat.',
+     meta: 'status: placeholder (belum diseed)'},
+  ];
+  const txt = {blue: 'text-blue-400', cyan: 'text-cyan-400', purple: 'text-purple-400', emerald: 'text-emerald-400'};
+  $('#gov-sources').innerHTML = cards.map(c => `
+    <div class="card p-4 hover:border-blue-500/50 transition">
+      <i class="fa-solid ${c.icon} ${txt[c.color]}"></i>
+      <div class="text-[13px] font-semibold text-slate-100 mt-2">${esc(c.name)}</div>
+      <div class="text-[11px] text-slate-500 mt-1">${esc(c.desc)}</div>
+      <div class="badge b-slate mt-3 inline-block">${esc(c.meta)}</div>
+    </div>`).join('');
+}
+
+/* =========================================================
+   TAB 6 — MATURITY
+   ========================================================= */
+function renderMaturity() {
+  const lv = [
+    {id: 'L1', name: 'Discover', state: 'done'}, {id: 'L2', name: 'Observe', state: 'done'},
+    {id: 'L3', name: 'Evaluate', state: 'done'}, {id: 'L4', name: 'Diagnose', state: 'active'},
+    {id: 'L5', name: 'Act', state: 'roadmap'},
+  ];
+  $('#maturity-levels').innerHTML = lv.map(l => {
+    if (l.state === 'done') return `<div class="card p-4 border-emerald-500/30">
+      <div class="flex items-center gap-2"><span class="badge b-emerald">${l.id}</span><span class="text-[13px] font-semibold text-slate-100">${l.name}</span></div>
+      <div class="text-[11px] text-emerald-300 mt-2"><i class="fa-solid fa-circle-check mr-1"></i>Selesai (100%)</div></div>`;
+    if (l.state === 'active') return `<div class="card p-4 border-blue-500/40">
+      <div class="flex items-center gap-2"><span class="badge b-blue">${l.id}</span><span class="text-[13px] font-semibold text-slate-100">${l.name}</span>
+      <span class="dot bg-blue-400 animate-pulse ml-auto"></span></div>
+      <div class="text-[11px] text-blue-300 mt-2">Fokus Pilot Aktif</div></div>`;
+    return `<div class="card p-4 border-slate-800 opacity-80">
+      <div class="flex items-center gap-2"><span class="badge b-slate">${l.id}</span><span class="text-[13px] font-semibold text-slate-300">${l.name}</span>
+      <i class="fa-solid fa-lock text-slate-500 ml-auto"></i></div>
+      <div class="text-[11px] text-slate-500 mt-2">Roadmap Fase P1</div></div>`;
+  }).join('');
+
+  const phases = [
+    {id: 'P0', name: 'Fondasi Inti', desc: 'Backend, rule engine, ingest agent, auth & audit append-only.', badge: ['b-emerald', 'Aktif']},
+    {id: 'P1', name: 'Runtime MVP', desc: 'Telemetri PG + Airflow, copilot evidence-bound, approval HITL.', badge: ['b-blue', 'Pilot Sekarang']},
+    {id: 'P2', name: 'Cloud & Lineage', desc: 'Adapter cloud provider, lineage end-to-end.', badge: ['b-slate', 'Mendatang']},
+    {id: 'P3', name: 'Ekspansi Multi-Cloud', desc: 'Multi-cloud, katalog enterprise, kebijakan terdistribusi.', badge: ['b-slate', 'Mendatang']},
+  ];
+  $('#roadmap-cards').innerHTML = phases.map(p => `
+    <div class="inner p-4">
+      <div class="flex items-center gap-2"><span class="chip">${p.id}</span><span class="text-[13px] font-semibold text-slate-100">${p.name}</span>
+      <div class="flex-1"></div><span class="badge ${p.badge[0]}">${p.badge[1]}</span></div>
+      <div class="text-[11px] text-slate-500 mt-2">${esc(p.desc)}</div>
+    </div>`).join('');
+}
+
+/* =========================================================
+   PERSONA
+   ========================================================= */
+function renderPersona() {
+  $('#persona-switch').innerHTML = PERSONAS.map(p =>
+    `<button class="pbtn ${persona === p.id ? 'on' : ''}" data-persona="${p.id}">${esc(p.label)}</button>`).join('');
+  $$('#persona-switch [data-persona]').forEach(b => b.onclick = () => {
+    persona = b.dataset.persona; renderPersona(); renderAll();
+    toast('info', `Persona: ${b.textContent} — tampilan disaring sesuai domain.`);
+  });
+}
+
+/* =========================================================
+   DATA LOAD + TAB SWITCH
+   ========================================================= */
+async function loadData(keys) {
+  const want = k => !keys || keys.includes(k);
+  const jobs = [];
+  if (want('summary')) jobs.push(api('/api/summary').then(d => S.summary = d));
+  if (want('assets')) jobs.push(api('/api/assets').then(d => S.assets = d.assets || []));
+  if (want('findings')) jobs.push(api('/api/findings').then(d => S.findings = d.findings || []));
+  if (want('results')) jobs.push(api('/api/control-results').then(d => S.results = d.control_results || []));
+  if (want('evidence')) jobs.push(api('/api/evidence').then(d => S.evidence = d.evidence || []));
+  if (want('audit')) jobs.push(api('/api/audit-events').then(d => S.audit = d.audit_events || []));
+  if (want('integrations')) jobs.push(api('/api/integrations').then(d => S.integrations = d.integrations || []));
+  return Promise.all(jobs);
+}
+
+function renderAll() {
+  renderKpi(); renderTopology(); renderEngine(); renderIncidents(); renderGovernance(); renderMaturity();
+}
+
+function tabExists(t) { return !!document.getElementById('panel-' + t); }
+function switchTab(tab) {
+  if (!tabExists(tab)) return;
+  $$('.tabbtn').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  $$('.panel').forEach(p => p.classList.toggle('on', p.id === 'panel-' + tab));
+  S.loaded[tab] = true;
+}
+$$('.tabbtn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+const TAB_META = {
+  topology: ['summary', 'assets', 'evidence', 'findings'],
+  engine: ['summary', 'results', 'evidence', 'assets'],
+  agents: ['integrations', 'summary', 'assets'],
+  incidents: ['findings', 'audit', 'summary', 'assets'],
+  governance: ['integrations', 'summary'],
+  maturity: ['summary'],
+};
+async function loadTab(tab) {
+  try {
+    await loadData(TAB_META[tab] || []);
+    if (tab === 'topology') renderTopology();
+    if (tab === 'engine') renderEngine();
+    if (tab === 'agents') renderAgents();
+    if (tab === 'incidents') renderIncidents();
+    if (tab === 'governance') renderGovernance();
+    if (tab === 'maturity') renderMaturity();
+    renderKpi();
+  } catch (e) { if (String(e.message) !== 'unauthenticated') toast('error', 'Gagal memuat data: ' + e.message); }
+}
+
+$('#btn-refresh-metric').onclick = async () => {
+  await loadTab('topology');
+  toast('success', `Metrik diperbarui — ${S.evidence.length} evidence, ${S.assets.length} aset.`);
+};
+$('#btn-sim-anomali').onclick = () => {
+  const n = nodeDetail[Object.keys(nodeDetail)[0]];
+  if (n && !n.demo) { toast('warning', `Simulasi anomali pada ${n.name} — dashboard hanya menampilkan data nyata; anomali uji dibuat di sisi agent.`); }
+  else toast('warning', 'Simulasi anomali dilewati: belum ada node nyata (agent belum push discovery).');
+};
+
+/* ---------- login/logout/boot ---------- */
 function showLogin() { $('#login-box').hidden = false; $('#app').hidden = true; }
 function showApp() { $('#login-box').hidden = true; $('#app').hidden = false; }
 
-function pill(status) { return `<span class="pill ${status}">${status}</span>`; }
-
-function cards(el, items) {
-  el.innerHTML = items.map(i => `<div class="card"><div class="label">${i.label}</div><div class="value">${i.value}</div></div>`).join('');
-}
-
-TAB_LOADERS = {
-  topology: async () => {
-    const d = await api('/api/assets');
-    const a = d.assets || [];
-    const provs = [...new Set(a.map(x => x.provider))];
-    cards($('#topo-cards'), [
-      {label: 'Assets', value: a.length},
-      {label: 'Providers', value: provs.length},
-      {label: 'Tenants', value: a[0] ? 1 : 0},
-    ]);
-    $('#topo-assets').innerHTML = a.map(x =>
-      `<tr><td>${x.native_id}</td><td>${x.provider}</td><td>${x.service}</td><td>${x.asset_type}</td><td>${x.environment}</td><td>${(x.observed_at||'').slice(0,19)}</td></tr>`
-    ).join('') || '<tr><td colspan="6" class="empty">Belum ada asset (agent belum push discovery).</td></tr>';
-  },
-  engine: async () => {
-    const [res, runs] = await Promise.all([api('/api/control-results'), api('/api/assessments')]);
-    const r = res.control_results || [];
-    const count = s => r.filter(x => x.status === s).length;
-    cards($('#engine-cards'), [
-      {label: 'Pass', value: count('pass')},
-      {label: 'Fail', value: count('fail')},
-      {label: 'Unknown', value: count('unknown')},
-      {label: 'N/A', value: count('not_applicable')},
-    ]);
-    $('#engine-results').innerHTML = r.slice(0, 50).map(x =>
-      `<tr><td>${x.control_id}</td><td>v${x.control_version}</td><td>${pill(x.status)}</td><td>${x.reason||''}</td><td>${(x.evaluated_at||'').slice(0,19)}</td></tr>`
-    ).join('') || '<tr><td colspan="5" class="empty">Belum ada assessment — trigger dari sisi admin (API).</td></tr>';
-  },
-  agents: async () => {
-    const d = await api('/api/integrations');
-    const rows = (d.integrations || []).map(i =>
-      `<tr><td>${i.provider}/${i.service}</td><td>v${i.adapter_version}</td><td>${i.support_status}</td><td>${(i.capabilities&&Object.keys(i.capabilities).filter(k=>i.capabilities[k]).join(', '))||''}</td><td>${i.limitations||''}</td></tr>`).join('');
-    document.querySelector('#tab-agents .placeholder').outerHTML =
-      `<table><thead><tr><th>Integration</th><th>Adapter</th><th>Status</th><th>Capabilities</th><th>Limitations</th></tr></thead><tbody>${rows||'<tr><td colspan="5" class="empty">Registry kosong.</td></tr>'}</tbody></table>`;
-  },
-  incidents: async () => {
-    const d = await api('/api/findings');
-    const f = d.findings || [];
-    $('#incident-findings').innerHTML = f.map(x =>
-      `<tr><td style="font-family:monospace;font-size:11px">${x.finding_id.slice(0,8)}</td><td>${x.control_id} v${x.control_version}</td><td>${pill(x.severity)}</td><td>${pill(x.status)}</td><td>${x.reason||''}</td><td>${(x.first_seen_at||'').slice(0,19)}</td></tr>`
-    ).join('');
-    $('#incident-empty').hidden = f.length > 0;
-  },
-  governance: async () => {
-    const d = await api('/api/audit-events');
-    const e = d.audit_events || [];
-    $('#gov-audit').innerHTML = e.map(x =>
-      `<tr><td>${(x.timestamp||'').slice(0,19)}</td><td>${x.actor}</td><td>${x.action}</td><td>${x.target||''}</td><td>${pill(x.outcome==='allow'?'resolved':x.outcome)}</td></tr>`
-    ).join('') || '<tr><td colspan="5" class="empty">Belum ada audit event.</td></tr>';
-  },
-  maturity: async () => {
-    // stub — konten visual diperkaya belakangan
-  },
-};
-
-async function loadTab(tab) {
-  try { await TAB_LOADERS[tab](); } catch (e) { /* unauth ditangani api() */ }
-}
-
-document.querySelectorAll('nav button').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    $('#tab-' + btn.dataset.tab).classList.add('active');
-    loadTab(btn.dataset.tab);
-  });
-});
-
 $('#login-btn').addEventListener('click', async () => {
-  const r = await fetch('/auth/login', {
-    method: 'POST', credentials: 'same-origin',
+  const r = await fetch('/auth/login', {method: 'POST', credentials: 'same-origin',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({username: $('#login-user').value, password: $('#login-pass').value}),
-  });
+    body: JSON.stringify({username: $('#login-user').value, password: $('#login-pass').value})});
   if (r.ok) { $('#login-err').textContent = ''; boot(); }
-  else { $('#login-err').textContent = 'Login gagal — cek username/password.'; }
+  else { $('#login-err').textContent = 'Login gagal — periksa username/password.'; }
 });
-
+$('#login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') $('#login-btn').click(); });
 $('#logout-btn').addEventListener('click', async () => {
   await fetch('/auth/logout', {method: 'POST', credentials: 'same-origin'});
-  showLogin();
+  location.reload();
 });
 
 async function boot() {
   try {
-    // probe: endpoint apa pun yang butuh session
-    const r = await fetch('/api/assets', {credentials: 'same-origin'});
+    const r = await fetch('/api/summary', {credentials: 'same-origin'});
     if (r.status === 401) return showLogin();
-    const me = await r.json();
+    const d = await r.json();
+    S.summary = d;
     showApp();
-    $('#whoami').textContent = 'tenant ' + (me.assets?.[0]?.tenant_id || '—');
-    loadTab('topology');
+    const who = d.tenant_id || '—';
+    $('#avatar').textContent = who.replace('tenant-', '').slice(0, 2).toUpperCase() || 'AD';
+    renderPersona();
+    await loadData();
+    renderAll();
+    renderAgents();
+    switchTab('topology');
+    toast('info', `Sesi aktif — tenant ${who}. Semua angka bersumber dari API (bukan data palsu).`);
+    if (!d.rule_engine.total) toast('warning', 'Belum ada assessment: KPI & tabel rule tampil kosong sampai agent terhubung.');
   } catch (e) { showLogin(); }
 }
-
 boot();
 </script>
 </body>
