@@ -106,15 +106,26 @@ def run_assessment(session, tenant_id: str, scope: dict | None = None,
             for e in latest.values()
         ]
         for control in controls:
-            # pilih evidence paling relevan: cocokkan applicability provider/service + rule params field prefix
+            # pilih evidence paling relevan: cocokkan applicability provider/service.
+            # Prefer evidence yang punya field yang dibutuhkan rule (mis. 'facets' utk lineage_check).
+            rp = control.params or {}
+            prefer_field = rp.get("facets_field") or rp.get("field", "")
+            if not prefer_field and control.rule_type == "lineage_check":
+                prefer_field = "facets"
             chosen = None
+            fallback = None
             for e in evid_pool:
                 if e["payload"].get("provider") not in (None, control.applicability.get("provider")):
                     continue
                 if e["payload"].get("service") not in (None, control.applicability.get("service")):
                     continue
-                chosen = e
-                break
+                if prefer_field and prefer_field in e["payload"]:
+                    chosen = e
+                    break
+                if fallback is None:
+                    fallback = e
+            if chosen is None:
+                chosen = fallback
             if chosen is None:
                 # Tidak ada evidence sama sekali utk asset ini. Kalau kontrol menarget
                 # provider tertentu dan asset jelas beda provider → not_applicable

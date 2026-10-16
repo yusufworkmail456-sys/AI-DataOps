@@ -68,8 +68,12 @@ def get_auth(request: Request) -> AuthContext:
 
 
 def get_agent(request: Request) -> tuple[str, Agent]:
-    """Auth agent via X-Agent-Key → (tenant_id, Agent). Key salah/absen → 401 dgn code."""
+    """Auth agent via X-Agent-Key or Authorization: Bearer → (tenant_id, Agent)."""
     key = request.headers.get("X-Agent-Key", "")
+    if not key:
+        bearer = request.headers.get("Authorization", "")
+        if bearer.startswith("Bearer "):
+            key = bearer[7:]
     if not key:
         raise HTTPException(401, {"error": "X-Agent-Key wajib", "code": "unauthenticated"})
     factory = request.app.state.db_factory

@@ -271,6 +271,57 @@ def ingest_evidence(body: EvidenceBody, request: Request, s=Depends(get_db)):
     return {"ok": True, "stored": stored, "skipped": skipped}
 
 
+@app.post("/ingest/lineage")
+async def ingest_lineage(request: Request, s=Depends(get_db)):
+    """OpenLineage RunEvent POST (Airflow listener). Auth: Bearer agent key.
+    Simpan facets sebagai evidence_type='openlineage' → RULE-LIN-002 lineage_check."""
+    try:
+        tenant_id, agent = get_agent(request)
+    except HTTPException:
+        raise
+    agent.last_seen_at = datetime.now(timezone.utc)
+    body = await request.json()
+    # OpenLineage RunEvent: {eventType, run{runId, facets}, job{namespace, name, facets}, inputs, outputs, eventTime}
+    run = body.get("run", {})
+    job = body.get("job", {})
+    facets = {
+        "run_facets": run.get("facets", {}) or {},
+        "task_facets": job.get("facets", {}) or {},
+        "data_facets": {
+            "inputs": [{"namespace": i.get("namespace"), "name": i.get("name"), "facets": i.get("facets", {})}
+                       for i in body.get("inputs", [])],
+            "outputs": [{"namespace": o.get("namespace"), "name": o.get("name"), "facets": o.get("facets", {})}
+                        for o in body.get("outputs", [])],
+        },
+    }
+    # native_id: airflow asset = apache-airflow@8080 (match discovery)
+    af_native_id = "apache-airflow@8080"
+    asset = s.execute(select(Asset).where(
+        Asset.tenant_id == tenant_id, Asset.native_id == af_native_id)).scalars().first()
+    if asset is None:
+        return err(422, f"asset {af_native_id} belum terdaftar", "unknown_asset")
+    source_ref = f"openlineage:{run.get('runId', '')}:{body.get('eventTime', '')}"
+    existing = s.execute(select(EvidenceRecord).where(
+        EvidenceRecord.tenant_id == tenant_id,
+        EvidenceRecord.source_ref == source_ref)).scalars().first()
+    if existing:
+        return {"ok": True, "stored": 0, "skipped": 1}
+    s.add(EvidenceRecord(
+        tenant_id=tenant_id, asset_id=asset.asset_id,
+        evidence_type="openlineage", source_ref=source_ref,
+        payload={"provider": "apache-airflow", "service": "orchestration",
+                  "asset": af_native_id, "facets": facets,
+                  "event_type": body.get("eventType", ""),
+                  "job_name": job.get("name", ""), "run_id": run.get("runId", "")},
+        collected_at=_parse_dt(body.get("eventTime")),
+        freshness="fresh",
+        access_classification="internal"))
+    service.audit(s, tenant_id, f"agent:{agent.name}", "ingest.lineage",
+                  target=f"run={run.get('runId', '')}")
+    s.commit()
+    return {"ok": True, "stored": 1, "skipped": 0}
+
+
 @app.get("/agent/config")
 def agent_config(request: Request, s=Depends(get_db)):
     """interval, rules version, creds refs — TANPA nilai creds (agent tarik terenkripsi nanti)."""
