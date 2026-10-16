@@ -99,9 +99,20 @@ tailwind.config = {
     <div class="hidden lg:flex items-center gap-1 p-1 rounded-full bg-slate-950/70 border border-slate-800" id="persona-switch"></div>
     <span class="badge b-blue whitespace-nowrap hidden md:inline-flex" title="Prinsip verifikasi bukti: tanpa bukti telemetri, kontrol TIDAK dianggap compliant"><i class="fa-solid fa-circle-check mr-1"></i> Bukti ≠ kepatuhan</span>
     <span class="badge b-emerald hidden md:inline-flex items-center gap-1"><i class="fa-solid fa-shield-halved"></i> Read-Only Default</span>
-    <button class="relative w-9 h-9 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-slate-200" title="Notifikasi">
-      <i class="fa-regular fa-bell"></i><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500"></span>
-    </button>
+    <div class="relative">
+      <button id="bell-btn" class="relative w-9 h-9 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-slate-200" title="Notifikasi">
+        <i class="fa-regular fa-bell"></i><span id="bell-dot" class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500" hidden></span>
+      </button>
+      <div id="bell-panel" hidden class="absolute right-0 top-11 w-80 card p-4 z-50 shadow-xl">
+        <div class="flex items-center gap-2 mb-3">
+          <i class="fa-solid fa-bell text-blue-400"></i>
+          <span class="font-semibold text-[13px] text-slate-100">Notifikasi</span>
+          <div class="flex-1"></div>
+          <span id="bell-count" class="chip">0</span>
+        </div>
+        <div id="bell-list" class="space-y-2 max-h-[300px] overflow-y-auto"></div>
+      </div>
+    </div>
     <div class="flex items-center gap-2">
       <div class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 grid place-items-center text-[11px] font-semibold text-slate-300" id="avatar">AD</div>
       <button id="logout-btn" class="text-[12px] text-slate-400 hover:text-slate-200"><i class="fa-solid fa-right-from-bracket"></i></button>
@@ -649,7 +660,8 @@ function renderEngine() {
             : '<span class="text-[11px] text-amber-300">tidak ada bukti telemetri</span>'}
         <div class="text-[11px] text-slate-500 mt-1 max-w-[260px]">${esc(r.reason || '')}</div></td>
       <td><span class="badge b-blue">${esc(r.knowledge_ref || '—')}</span></td>
-      <td><button class="px-2 py-1 rounded-lg bg-slate-950/70 border border-slate-800 text-[11px] text-slate-300 hover:border-blue-500/40" data-ev="${esc(r.result_id)}"><i class="fa-solid fa-file-shield mr-1"></i>Lihat Bukti</button></td>
+      <td>${(r.evidence_refs || []).length ? `<button class="px-2 py-1 rounded-lg bg-slate-950/70 border border-slate-800 text-[11px] text-slate-300 hover:border-blue-500/40" data-ev="${esc(r.result_id)}"><i class="fa-solid fa-file-shield mr-1"></i>Lihat Bukti</button>`
+            : '<span class="text-[11px] text-slate-600">—</span>'}
     </tr>`).join('');
   }
   $$('#engine-rows [data-ev]').forEach(b => b.onclick = () => showEvidence(b.dataset.ev));
@@ -1042,6 +1054,45 @@ $('#sb-toggle').onclick = () => {
   }
 };
 $('#sb-backdrop').onclick = () => { sb.classList.remove('sb-open'); $('#sb-backdrop').hidden = true; };
+
+/* ---------- bell notifications ---------- */
+$('#bell-btn').onclick = (e) => {
+  e.stopPropagation();
+  const p = $('#bell-panel');
+  p.hidden = !p.hidden;
+  if (!p.hidden) { renderBell(); $('#bell-dot').hidden = true; }
+};
+document.addEventListener('click', (e) => {
+  if (!$('#bell-panel').hidden && !e.target.closest('#bell-panel') && !e.target.closest('#bell-btn'))
+    $('#bell-panel').hidden = true;
+});
+function renderBell() {
+  const fs = S.findings.filter(f => ['open','acknowledged','remediating','accepted_risk'].includes(f.status));
+  const items = [];
+  fs.forEach(f => {
+    const a = S.assets.find(x => x.asset_id === f.asset_id);
+    const sev = f.status === 'accepted_risk' ? 'text-amber-400' : 'text-rose-400';
+    const ico = f.status === 'accepted_risk' ? 'fa-shield' : 'fa-triangle-exclamation';
+    items.push({icon: ico, color: sev,
+      title: f.control_id + ' — ' + f.severity + (f.status === 'accepted_risk' ? ' (Accepted Risk)' : ''),
+      sub: (a && a.native_id) || f.asset_id, time: f.last_seen_at, tab: 'incidents'});
+  });
+  $('#bell-count').textContent = items.length;
+  $('#bell-dot').hidden = items.length === 0;
+  $('#bell-list').innerHTML = items.length ? items.map(i => `
+    <div class="inner p-3 flex items-start gap-3 cursor-pointer hover:border-blue-500/30" data-bell-tab="${i.tab}">
+      <i class="fa-solid ${i.icon} ${i.color} mt-1"></i>
+      <div class="min-w-0 flex-1">
+        <div class="text-[12px] text-slate-200 truncate">${esc(i.title)}</div>
+        <div class="chip truncate">${esc(i.sub)}</div>
+      </div>
+      <div class="text-[10px] text-slate-500 whitespace-nowrap">${fmtT(i.time)}</div>
+    </div>`).join('') : '<div class="text-[12px] text-slate-500 text-center py-4">Tidak ada notifikasi aktif.</div>';
+  $$('#bell-list [data-bell-tab]').forEach(el => el.onclick = () => {
+    $('#bell-panel').hidden = true;
+    switchTab(el.dataset.bellTab);
+  });
+}
 
 /* ---------- login/logout/boot ---------- */
 function showLogin() { $('#login-box').hidden = false; $('#app').hidden = true; }
