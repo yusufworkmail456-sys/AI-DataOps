@@ -1,0 +1,26 @@
+# Konfigurasi agent (env override: DATAOPS_*).
+cloud:
+  base_url: "http://localhost:9150"
+  enroll_token: ""          # dari admin; sekali pakai
+  ca_cert: ""               # opsional path CA untuk TLS verify
+buffer:
+  path: "agent_buffer.jsonl"
+  max_bytes: 52428800
+agent:
+  name: "agent-1"
+  interval_s: 300
+collectors:
+  postgresql:
+    enabled: true
+    dsn: ""                 # read-only creds di sini / env DATAOPS_PG_DSN — TIDAK dikirim ke cloud
+  airflow:
+    enabled: true
+    base_url: ""            # env DATAOPS_AIRFLOW_URL
+    auth:                   # env DATAOPS_AIRFLOW_USER/PASSWORD — TIDAK dikirim ke cloud
+      username: ""
+      password: ""
+discovery:
+  docker_socket: "/var/run/docker.sock"
+  enable_docker: true
+  enable_systemd: true
+  enable_ports: true
