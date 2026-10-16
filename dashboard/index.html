@@ -33,17 +33,21 @@ tailwind.config = {
   .pillf { font-size: 12px; padding: 4px 12px; border-radius: 999px; border: 1px solid #1e293b; color: #94a3b8; background: rgba(2,6,23,.6); cursor: pointer; }
   .pillf:hover { color: #e2e8f0; }
   .pillf.on { background: #2563eb; border-color: #2563eb; color: #fff; }
-  .tabbtn { display: flex; align-items: center; gap: 10px; margin: 2px 8px 2px 0; padding: 10px 12px; font-size: 12px; color: #94a3b8; border-left: 2px solid transparent; border-radius: 0 8px 8px 0; cursor: pointer; white-space: nowrap; }
+  .tabbtn { display: flex; align-items: center; gap: 10px; margin: 2px 10px 2px 0; padding: 9px 12px; font-size: 12px; line-height: 1.35; color: #94a3b8; border-left: 2px solid transparent; border-radius: 0 10px 10px 0; cursor: pointer; white-space: normal; }
   .tabbtn:hover { color: #e2e8f0; background: rgba(30,41,59,.35); }
   .tabbtn.on { color: #60a5fa; border-left-color: #3b82f6; background: rgba(59,130,246,.08); }
-  /* Sidebar collapsible */
-  #sidebar { width: 240px; transition: width .18s ease; }
+  .sb-ico { width: 26px; height: 26px; flex: none; border-radius: 8px; display: grid; place-items: center; background: rgba(30,41,59,.55); color: #94a3b8; font-size: 11px; }
+  .tabbtn:hover .sb-ico, .tabbtn.on .sb-ico { background: rgba(59,130,246,.15); color: #60a5fa; }
+  .sb-group { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #475569; padding: 12px 16px 4px; }
+  #sidebar .slabel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Sidebar: sticky (tetap terlihat saat scroll) + collapsible */
+  #sidebar { width: 240px; transition: width .18s ease; position: sticky; top: 4rem; height: calc(100vh - 4rem); overflow-y: auto; overflow-x: hidden; }
   body.sb-min #sidebar { width: 56px; }
   body.sb-min #sidebar .slabel { display: none; }
-  body.sb-min #sidebar .tabbtn { justify-content: center; padding: 10px 0; margin: 2px 0; }
+  body.sb-min #sidebar .tabbtn { justify-content: center; padding: 9px 0; margin: 2px 0; }
   body.sb-min #sidebar .tabbtn .chip, body.sb-min #sidebar .tabbtn .badge { display: none; }
   @media (max-width: 1023px) {
-    #sidebar { position: fixed; left: 0; top: 4rem; bottom: 0; width: 240px; transform: translateX(-100%); transition: transform .18s ease; z-index: 40; }
+    #sidebar { position: fixed; left: 0; top: 4rem; bottom: 0; height: auto; width: 240px; transform: translateX(-100%); transition: transform .18s ease; z-index: 40; }
     body.sb-open #sidebar { transform: none; }
     #sb-backdrop { position: fixed; left: 0; right: 0; top: 4rem; bottom: 0; background: rgba(2,6,23,.6); z-index: 39; }
   }
@@ -107,16 +111,18 @@ tailwind.config = {
 
   <!-- Sidebar nav -->
   <div class="flex flex-1 items-stretch">
-    <aside id="sidebar" class="shrink-0 bg-slate-900 border-r border-slate-800 py-3 flex flex-col gap-1 overflow-y-auto">
-      <div class="lbl px-4 pb-1 whitespace-nowrap slabel">Navigasi</div>
-      <div class="tabbtn on" data-tab="topology"><i class="fa-solid fa-diagram-project w-4 text-center"></i> <span class="slabel">Pipeline Observability &amp; Lineage</span></div>
-      <div class="tabbtn" data-tab="engine"><i class="fa-solid fa-square-check w-4 text-center"></i> <span class="slabel">Rule Engine Deterministik</span> <span class="chip" id="nav-cnt-engine">0</span></div>
-      <div class="tabbtn" data-tab="agents"><i class="fa-solid fa-robot w-4 text-center"></i> <span class="slabel">Orkestrasi AI &amp; Supervisor</span> <span class="badge b-blue">P0</span></div>
-      <div class="tabbtn" data-tab="incidents"><i class="fa-solid fa-triangle-exclamation w-4 text-center text-rose-400"></i> <span class="slabel">Insiden &amp; Human-in-the-Loop</span> <span class="chip" id="nav-cnt-incidents">0</span></div>
-      <div class="tabbtn" data-tab="governance"><i class="fa-solid fa-book-bookmark w-4 text-center"></i> <span class="slabel">Knowledge &amp; Standar Otoritatif</span></div>
-      <div class="tabbtn" data-tab="maturity"><i class="fa-solid fa-layer-group w-4 text-center"></i> <span class="slabel">Maturitas L1–L5 &amp; Roadmap</span></div>
+    <aside id="sidebar" class="shrink-0 bg-slate-900 border-r border-slate-800 pb-3 flex flex-col">
+      <div class="sb-group slabel">Pipeline</div>
+      <div class="tabbtn" data-tab="topology"><span class="sb-ico"><i class="fa-solid fa-diagram-project"></i></span> <span class="slabel">Observability &amp; Lineage</span></div>
+      <div class="tabbtn" data-tab="engine"><span class="sb-ico"><i class="fa-solid fa-square-check"></i></span> <span class="slabel">Rule Engine</span> <span class="chip" id="nav-cnt-engine">0</span></div>
+      <div class="tabbtn" data-tab="incidents"><span class="sb-ico"><i class="fa-solid fa-triangle-exclamation text-rose-400"></i></span> <span class="slabel">Insiden &amp; Approval</span> <span class="chip" id="nav-cnt-incidents">0</span></div>
+      <div class="sb-group slabel">Intelijen</div>
+      <div class="tabbtn" data-tab="agents"><span class="sb-ico"><i class="fa-solid fa-robot"></i></span> <span class="slabel">AI &amp; Supervisor</span> <span class="badge b-blue">P0</span></div>
+      <div class="tabbtn" data-tab="governance"><span class="sb-ico"><i class="fa-solid fa-book-bookmark"></i></span> <span class="slabel">Knowledge Otoritatif</span></div>
+      <div class="sb-group slabel">Strategi</div>
+      <div class="tabbtn" data-tab="maturity"><span class="sb-ico"><i class="fa-solid fa-layer-group"></i></span> <span class="slabel">Maturitas L1–L5</span></div>
       <div class="flex-1"></div>
-      <div class="px-3 hidden lg:block"><span class="badge b-blue whitespace-normal"><i class="fa-solid fa-circle-check mr-1"></i> <span class="slabel">100% Verifikasi Bukti: Ketiadaan bukti telemetri ≠ kepatuhan</span></span></div>
+      <div class="px-3 pt-3 hidden lg:block"><span class="badge b-blue whitespace-normal"><i class="fa-solid fa-circle-check mr-1"></i> <span class="slabel">Bukti ≠ kepatuhan</span></span></div>
     </aside>
 
     <main class="flex-1 min-w-0 max-w-[1400px] p-5">
