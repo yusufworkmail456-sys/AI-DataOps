@@ -10,7 +10,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from . import rule_engine, service
 from .auth import (AuthContext, ROLE_RANK, get_agent, get_auth, hash_key,
@@ -310,10 +310,14 @@ def api_finding_update(finding_id: str, body: dict, auth: AuthContext = Depends(
 
 
 @app.get("/api/control-results")
-def api_control_results(auth: AuthContext = Depends(get_auth), s=Depends(get_db)):
-    rows = s.execute(select(ControlResult).where(
-        ControlResult.tenant_id == auth.tenant_id)
-        .order_by(ControlResult.evaluated_at.desc()).limit(500)).scalars().all()
+def api_control_results(status: str | None = None, page: int = 1, per_page: int = 500,
+                        auth: AuthContext = Depends(get_auth), s=Depends(get_db)):
+    q = select(ControlResult).where(ControlResult.tenant_id == auth.tenant_id)
+    if status:
+        q = q.where(ControlResult.status == status)
+    total = s.execute(select(func.count()).select_from(q.subquery())).scalar() or 0
+    rows = s.execute(q.order_by(ControlResult.evaluated_at.desc())
+                     .offset((max(1, page) - 1) * per_page).limit(per_page)).scalars().all()
     controls = {c.control_id: c for c in s.execute(select(Control)).scalars().all()}
     out = []
     for r in rows:
@@ -323,7 +327,7 @@ def api_control_results(auth: AuthContext = Depends(get_auth), s=Depends(get_db)
             j.update({"statement": c.statement, "rule_type": c.rule_type,
                       "severity": c.severity, "knowledge_ref": c.knowledge_ref})
         out.append(j)
-    return {"control_results": out}
+    return {"control_results": out, "total": total, "page": max(1, page), "per_page": per_page}
 
 
 @app.get("/api/evidence")

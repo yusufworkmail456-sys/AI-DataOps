@@ -175,6 +175,7 @@ tailwind.config = {
         <div class="p-4 flex items-center gap-3 flex-wrap border-t border-slate-800">
           <span class="text-[11px] text-slate-500"><i class="fa-solid fa-circle-info mr-1"></i>Engine deterministik memverifikasi fakta biner sebelum LLM memberi konteks</span>
           <div class="flex-1"></div>
+          <span class="chip" id="engine-pager">—</span>
           <span class="chip" id="engine-latency">latency engine: —</span>
         </div>
       </div>
@@ -393,7 +394,7 @@ function renderKpi() {
 
   const cards = [
     {icon: 'fa-calculator', color: 'emerald', label: 'Status Rule Engine',
-     value: hasAssess ? (rate == null ? '—' : rate + '%') : '—',
+     value: hasAssess ? (rate == null ? '—' : (rate <= 1 ? Math.round(rate * 100) : Math.round(rate)) + '%') : '—',
      sub: hasAssess ? `<span class="text-emerald-300">${re.pass || 0} Pass</span>` : `<span class="text-slate-500">belum ada assessment</span>`,
      caption: hasAssess ? `${re.fail || 0} Fail • ${re.unknown || 0} Unknown • ${re.not_applicable || 0} N/A`
                         : 'Jalankan assessment setelah agent terhubung',
@@ -606,7 +607,12 @@ function renderEngine() {
   } else if (!rows.length) {
     $('#engine-rows').innerHTML = `<tr><td colspan="6" class="text-[12px] text-slate-500 py-6 text-center">Tidak ada kontrol dengan status ini pada persona terpilih.</td></tr>`;
   } else {
-    $('#engine-rows').innerHTML = rows.map(r => `<tr>
+    const PAGE = 50;
+    if (S.filter !== S._lastFilter) { S._lastFilter = S.filter; S.page = 1; }
+    const pages = Math.max(1, Math.ceil(rows.length / PAGE));
+    if (S.page == null || S.page > pages) S.page = 1;
+    const slice = rows.slice((S.page - 1) * PAGE, S.page * PAGE);
+    $('#engine-rows').innerHTML = slice.map(r => `<tr>
       <td><div class="chip text-blue-300">${esc(r.control_id)}</div>
         <div class="text-[11px] text-slate-500 mt-1 max-w-[320px]">${esc(r.statement || '—')}</div></td>
       <td><span class="chip">${esc((S.assets[0] && S.assets[0].native_id) || 'tenant:' + (S.summary && S.summary.tenant_id) || '—')}</span></td>
@@ -619,6 +625,18 @@ function renderEngine() {
     </tr>`).join('');
   }
   $$('#engine-rows [data-ev]').forEach(b => b.onclick = () => showEvidence(b.dataset.ev));
+  const pag = $('#engine-pager');
+  if (pag) {
+    if (rows.length <= PAGE) { pag.innerHTML = `<span class="text-[11px] text-slate-500">${rows.length} baris</span>`; }
+    else {
+      pag.innerHTML = `<button class="px-2 py-1 rounded-lg bg-slate-950/70 border border-slate-800 text-[11px] text-slate-300" data-pg="prev" ${S.page <= 1 ? 'disabled style="opacity:.4"' : ''}>‹ Sebelumnya</button>
+        <span class="text-[11px] text-slate-400">Hal ${S.page} / ${pages} • ${rows.length} baris</span>
+        <button class="px-2 py-1 rounded-lg bg-slate-950/70 border border-slate-800 text-[11px] text-slate-300" data-pg="next" ${S.page >= pages ? 'disabled style="opacity:.4"' : ''}>Berikutnya ›</button>`;
+      const p = pag.querySelector('[data-pg=prev]'), n = pag.querySelector('[data-pg=next]');
+      if (p) p.onclick = () => { if (S.page > 1) { S.page--; renderEngine(); } };
+      if (n) n.onclick = () => { if (S.page < pages) { S.page++; renderEngine(); } };
+    }
+  }
 
   const last = (S.summary && S.summary.rule_engine) || {};
   $('#engine-latency').textContent = 'latency engine: ' + (last.evaluated_at ? `assessment selesai ${fmtT(last.evaluated_at)}` : 'belum ada run') +
