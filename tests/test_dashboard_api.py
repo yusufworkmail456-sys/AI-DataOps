@@ -36,9 +36,11 @@ class TestSummary:
         re = d["rule_engine"]
         assert re["total"] == 7
         assert re["has_assessment"] is True
-        # 1 pass (ENG-001), 2 fail (DBA-003, SEC-004), sisanya unknown (GOV-009 + tanpa evidence Airflow)
-        assert (re["pass"], re["fail"], re["unknown"]) == (1, 2, 4)
-        assert abs(re["pass_rate"] - 14.3) < 0.1
+        # 1 pass (ENG-001), 2 fail (DBA-003, SEC-004), 1 unknown (GOV-009 — kontrol
+        # generik tanpa bukti), 3 not_applicable (kontrol Airflow vs asset PG)
+        assert (re["pass"], re["fail"], re["unknown"]) == (1, 2, 1)
+        assert re.get("not_applicable") == 3
+        assert abs(re["pass_rate"] - 33.3) < 0.1  # pass/pass+fail, N/A & unknown tak dihitung
         assert d["pipelines"]["pg_assets"] == 1
         assert d["pipelines"]["open_findings"] == 2
         assert d["agents"]["supervisor"] == "P0" and len(d["agents"]["specialists"]) == 4

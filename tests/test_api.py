@@ -148,7 +148,10 @@ class TestAC05UnknownNotPass:
         assert results, "harus ada control results"
         assert all(res["status"] != "pass" for res in results), \
             "tanpa evidence tidak boleh ada pass"
-        assert all(res["status"] == "unknown" for res in results)
+        # AC-05: tanpa evidence tidak boleh pass. Kontrol yang menarget provider lain
+        # → not_applicable (keputusan eksplisit); sisanya unknown.
+        for res in results:
+            assert res["status"] in ("unknown", "not_applicable"), res
 
     def test_partial_evidence_mix(self, client, enrolled_agent, seed_controls, admin_client):
         key = enrolled_agent["agent_key"]

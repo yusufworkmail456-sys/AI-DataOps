@@ -97,6 +97,20 @@ def run_assessment(session, tenant_id: str, scope: dict | None = None,
                     continue
                 chosen = e
                 break
+            if chosen is None:
+                # Tidak ada evidence sama sekali utk asset ini. Kalau kontrol menarget
+                # provider tertentu dan asset jelas beda provider → not_applicable
+                # (keputusan eksplisit), bukan unknown. Kalau kontrol generik (tanpa
+                # target provider) → unknown (bukti memang belum ada).
+                app = control.applicability or {}
+                if app.get("provider") and app["provider"] != asset.provider:
+                    counts["not_applicable"] += 1
+                    session.add(ControlResult(
+                        tenant_id=tenant_id, assessment_id=run.assessment_id,
+                        control_id=control.control_id, control_version=control.version,
+                        status="not_applicable", evidence_refs=[],
+                        reason=f"control utk {app['provider']}, asset ini {asset.provider}"))
+                    continue
             result = rule_engine.evaluate(control, chosen)
             counts[result.status] = counts.get(result.status, 0) + 1
             session.add(ControlResult(

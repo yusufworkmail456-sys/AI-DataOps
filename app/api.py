@@ -371,11 +371,12 @@ def api_summary(auth: AuthContext = Depends(get_auth), s=Depends(get_db)):
                 ControlResult.assessment_id == run.assessment_id)).scalars().all():
             counts[r.status] = counts.get(r.status, 0) + 1
     total = sum(counts.values())
+    applicable = counts["pass"] + counts["fail"]  # N/A & unknown tidak masuk pass rate
     findings = s.execute(select(Finding).where(Finding.tenant_id == auth.tenant_id)).scalars().all()
     open_findings = [f for f in findings if f.status in ("open", "acknowledged", "remediating")]
     assets = s.execute(select(Asset).where(Asset.tenant_id == auth.tenant_id)).scalars().all()
     controls_active = s.execute(select(Control).where(Control.active == True)).scalars().all()  # noqa: E712
-    pass_rate = round(counts["pass"] / total * 100, 1) if total else None
+    pass_rate = round(counts["pass"] / applicable * 100, 1) if applicable else None
     return {
         "tenant_id": auth.tenant_id,
         "rule_engine": {**counts, "total": total, "pass_rate": pass_rate,
