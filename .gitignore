@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+data/*.db
+agent_buffer.jsonl
+agent_key.txt
+*.egg-info/
+build/
+dist/
